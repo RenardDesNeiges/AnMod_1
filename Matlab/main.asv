@@ -25,16 +25,12 @@ function main()
     % alignGyroscope(data) and plot the results
     % <<< ENTER YOUR CODE HERE >>>
     
-    %gyroscope data
-    [left_foot_gyro,right_foot_gyro] = alignGyroscopeTF2AF(data);
+    %left foot gyroscope data
+    lfg = data.imu.left.gyro;
+    %right foot gyroscope data
+    rfg = data.imu.right.gyro;
     
-    subplot(2,1,1);
-    plot(left_foot_gyro)
-
-    subplot(2,1,2); 
-    plot(right_foot_gyro)
-    
-    
+    %now let's align the data :
     
 %% Exercice 1.A.2 (Filter)
     % Use the function applyLowpassFilter(InputSignal, CutoffFrequency, SamplingFrequency)
