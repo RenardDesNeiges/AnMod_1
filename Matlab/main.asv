@@ -16,6 +16,8 @@ function main()
     DATASET_NAME = ['amlWalkingDataStruct' num2str(DATASET_NUMBER) '.mat'];
     load(DATASET_NAME); % load data structure
     scriptOutResults = [];
+    
+    
       
 %%  ------------- (1) ASSIGNEMENT 1: TEMPORAL AND SPATIAL GAIT ANALYSIS -------------------    
 
@@ -25,18 +27,70 @@ function main()
     % alignGyroscope(data) and plot the results
     % <<< ENTER YOUR CODE HERE >>>
     
-    %left foot gyroscope data
-    lfg = data.imu.left.gyro;
-    %right foot gyroscope data
-    rfg = data.imu.right.gyro;
+    %white background for nicer reports
     
-    %now let's align the data :
+    
+    %gyroscope data
+    [left_foot_gyro,right_foot_gyro] = alignGyroscopeTF2AF(data);
+    
+    subplot(2,1,1);
+    plot(left_foot_gyro)
+
+    subplot(2,1,2); 
+    plot(right_foot_gyro)
+    
+    set(gcf,'color','w');
+    
     
 %% Exercice 1.A.2 (Filter)
     % Use the function applyLowpassFilter(InputSignal, CutoffFrequency, SamplingFrequency)
     % to apply the filter on the accelerometer signal 
     % Plot the three signals on a same axis (you can use hold on command)
     % <<< ENTER YOUR CODE HERE >>>
+    
+    left_foot_acc = data.imu.left.accel;
+    right_foot_acc = data.imu.right.accel;
+    
+    %% unfiltered plot
+    
+    subplot(2,1,1);
+    plot(left_foot_acc)
+
+    subplot(2,1,2); 
+    plot(right_foot_acc)
+    
+    set(gcf,'color','w');
+    
+    %% 12Hz lp plot
+    
+    freq = 1/data.imu.left.time(2);
+    
+    left_foot_acc_12 = applyLowpassFilter(left_foot_acc,12, freq);
+    right_foot_acc_12 = applyLowpassFilter(right_foot_acc,12, freq);
+    
+    subplot(2,1,1);
+    plot(left_foot_acc_12)
+
+    subplot(2,1,2); 
+    plot(right_foot_acc_12)
+    
+    set(gcf,'color','w');
+    
+    %% 5Hz lp plot
+    
+    freq = 1/data.imu.left.time(2);
+    
+    left_foot_acc_12 = applyLowpassFilter(left_foot_acc,5, freq);
+    right_foot_acc_12 = applyLowpassFilter(right_foot_acc,5, freq);
+    
+    subplot(2,1,1);
+    plot(left_foot_acc_5)
+
+    subplot(2,1,2); 
+    plot(right_foot_acc_5)
+    
+    set(gcf,'color','w');
+    
     
 %% Exercice 1.A.3 (Event Detection)
     % detect IC, TC, FF for all midswing-to-midswing cycles (Left foot).
