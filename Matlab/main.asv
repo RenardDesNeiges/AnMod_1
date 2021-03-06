@@ -35,12 +35,45 @@ function main()
     
     subplot(2,1,1);
     plot(left_foot_gyro)
+    title('left foot gyro data')
 
     subplot(2,1,2); 
     plot(right_foot_gyro)
+    title('right foot gyro data')
     
     set(gcf,'color','w');
     
+    %%
+    
+    freq = 1/data.imu.left.time(2);
+    data_1 = applyLowpassFilter(left_foot_gyro(:,1),5,freq);
+    data_2 = applyLowpassFilter(left_foot_gyro(:,2),5,freq);
+    data_3 = applyLowpassFilter(left_foot_gyro(:,3),5,freq);
+    
+    subplot(3,1,1);
+    plot(data_1)
+    title('left transverse plane gyro, filtered at 5Hz')
+    
+    subplot(3,1,2);
+    plot(data_2)
+    title('left frontal plane gyro, filtered at 5Hz')
+    
+    subplot(3,1,3);
+    plot(data_3)
+    title('left saggital plane gyro, filtered at 5Hz')
+    
+    %%
+    
+    %gyroscope data
+    [left_foot_gyro,right_foot_gyro] = alignGyroscopeTF2AF(data);
+    
+    subplot(2,1,1);
+    plot(applyLowpassFilter(left_foot_gyro(:,3),5,freq))
+    title('left foot pitch gyro data, filtered at 5Hz')
+
+    subplot(2,1,2); 
+    plot(applyLowpassFilter(right_foot_gyro(:,3),5,freq))
+    title('right foot pitch gyro data, filtered at 5Hz')
     
 %% Exercice 1.A.2 (Filter)
     % Use the function applyLowpassFilter(InputSignal, CutoffFrequency, SamplingFrequency)
@@ -80,8 +113,8 @@ function main()
     
     freq = 1/data.imu.left.time(2);
     
-    left_foot_acc_12 = applyLowpassFilter(left_foot_acc,5, freq);
-    right_foot_acc_12 = applyLowpassFilter(right_foot_acc,5, freq);
+    left_foot_acc_5 = applyLowpassFilter(left_foot_acc,5, freq);
+    right_foot_acc_5 = applyLowpassFilter(right_foot_acc,5, freq);
     
     subplot(2,1,1);
     plot(left_foot_acc_5)
@@ -95,6 +128,16 @@ function main()
 %% Exercice 1.A.3 (Event Detection)
     % detect IC, TC, FF for all midswing-to-midswing cycles (Left foot).
     % <<< ENTER YOUR CODE HERE >>>
+    
+    
+    left_midswing = data.imu.left.midswings;
+    right_midswing = data.imu.right.midswings;
+    
+    
+    left_foot_acc = data.imu.left.accel;
+    right_foot_acc = data.imu.right.accel;
+    
+    %%
     
     % add results to the output structure
     scriptOutResults.imu.leftIC = []; % insert your detection of IC
