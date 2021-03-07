@@ -36,10 +36,16 @@ function main()
     subplot(2,1,1);
     plot(left_foot_gyro)
     title('left foot gyro data')
+    ylabel('angular velocity in deg/s') 
+    xlabel('time samples (sampled at 500Hz)') 
+    legend({'transverse plane (yaw)', 'frontal plane (roll)', 'saggital plane (pitch)'},'Location','southwest')
 
     subplot(2,1,2); 
     plot(right_foot_gyro)
     title('right foot gyro data')
+    ylabel('angular velocity in deg/s') 
+    xlabel('time samples (sampled at 500Hz)') 
+    legend({'transverse plane (yaw)', 'frontal plane (roll)', 'saggital plane (pitch)'},'Location','southwest')
     
     set(gcf,'color','w');
     
@@ -74,6 +80,8 @@ function main()
     subplot(2,1,2); 
     plot(applyLowpassFilter(right_foot_gyro(:,3),5,freq))
     title('right foot pitch gyro data, filtered at 5Hz')
+    
+    
     
 %% Exercice 1.A.2 (Filter)
     % Use the function applyLowpassFilter(InputSignal, CutoffFrequency, SamplingFrequency)
@@ -121,6 +129,33 @@ function main()
 
     subplot(2,1,2); 
     plot(right_foot_acc_5)
+    
+    set(gcf,'color','w');
+    
+    %% Report plot with 12Hz and 5Hz cutoffs
+    
+    freq = 1/data.imu.left.time(2);
+    
+    left_foot_acc_5 = applyLowpassFilter(left_foot_acc,5, freq);
+    right_foot_acc_5 = applyLowpassFilter(right_foot_acc,5, freq);
+    
+    subplot(3,1,1);
+    plot(left_foot_acc(:,1))
+    title('left foot accelerometer data, filtered with a low-pass at 12Hz')
+    ylabel('acceleration in g') 
+    xlabel('time samples (sampled at 500Hz)') 
+    
+    subplot(3,1,2);
+    plot(left_foot_acc_12(:,1))
+    title('left foot accelerometer data, filtered with a low-pass at 12Hz')
+    ylabel('acceleration in g') 
+    xlabel('time samples (sampled at 500Hz)') 
+
+    subplot(3,1,3); 
+    plot(left_foot_acc_5(:,1))
+    title('left foot accelerometer data, filtered with a low-pass at 5Hz')
+    ylabel('angular velocity in g') 
+    xlabel('time samples (sampled at 500Hz)') 
     
     set(gcf,'color','w');
     
@@ -266,7 +301,7 @@ function main()
     % <<< ENTER YOUR CODE HERE >>>
     Y_AF = data.imu.right.accelstatic(:,2);
    
-    scriptOutResults.imu.rightRotationYAF = R_TFg_Y_AF = get3DRotationMatrixA2B(scriptOutResults.imu.rightGravityTF, Y_AF);; % insert R_TFg_Y_AF
+    %scriptOutResults.imu.rightRotationYAF = R_TFg_Y_AF = get3DRotationMatrixA2B(scriptOutResults.imu.rightGravityTF, Y_AF);; % insert R_TFg_Y_AF
         
 %% Exercice 2.A.4 (Plot gravity before and after rotation) 
     % plot the static signals before and after the rotation
@@ -322,7 +357,7 @@ function main()
           scriptOutResults.motioncameras.tfY; 
           scriptOutResults.motioncameras.tfZ];
       
-    GF = []; % à définir
+    GF = []; % ï¿½ dï¿½finir
     
     scriptOutResults.motioncameras.R_TF_GF = get3DRotationMatrixA2B(TF,GF); % insert R_TF_GF
         
@@ -355,7 +390,7 @@ function main()
           scriptOutResults.motioncameras.afY; 
           scriptOutResults.motioncameras.afZ];
       
-    GF = []; % à définir
+    GF = []; % ï¿½ dï¿½finir
     
     scriptOutResults.motioncameras.R_AF_GF = get3DRotationMatrixA2B(AF,GF); % insert R_AF_GF
     
@@ -390,7 +425,7 @@ function main()
     % <<< ENTER YOUR CODE HERE >>>
     
     F_rear_right = (data.insole.right.pressure(:, 1:33)).*(data.insole.right.area(:, 1:33));
-    F_fore_right = (data.insole.right.pressure(:, 55:99).*(data.insole.right.are(:, 55:99));
+    F_fore_right = (data.insole.right.pressure(:, 55:99)).*(data.insole.right.area(:, 55:99));
        
     % detect the sample index of the multiple IC, TS, HO, TO
     % <<< ENTER YOUR CODE HERE >>>
