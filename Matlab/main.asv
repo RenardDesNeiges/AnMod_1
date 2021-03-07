@@ -36,10 +36,16 @@ function main()
     subplot(2,1,1);
     plot(left_foot_gyro)
     title('left foot gyro data')
+    ylabel('angular velocity in deg/s') 
+    xlabel('time samples (sampled at 500Hz)') 
+    legend({'transverse plane (yaw)', 'frontal plane (roll)', 'saggital plane (pitch)'},'Location','southwest')
 
     subplot(2,1,2); 
     plot(right_foot_gyro)
     title('right foot gyro data')
+    ylabel('angular velocity in deg/s') 
+    xlabel('time samples (sampled at 500Hz)') 
+    legend({'transverse plane (yaw)', 'frontal plane (roll)', 'saggital plane (pitch)'},'Location','southwest')
     
     set(gcf,'color','w');
     
@@ -74,6 +80,8 @@ function main()
     subplot(2,1,2); 
     plot(applyLowpassFilter(right_foot_gyro(:,3),5,freq))
     title('right foot pitch gyro data, filtered at 5Hz')
+    
+    
     
 %% Exercice 1.A.2 (Filter)
     % Use the function applyLowpassFilter(InputSignal, CutoffFrequency, SamplingFrequency)
@@ -124,6 +132,33 @@ function main()
     
     set(gcf,'color','w');
     
+    %% Report plot with 12Hz and 5Hz cutoffs
+    
+    freq = 1/data.imu.left.time(2);
+    
+    left_foot_acc_5 = applyLowpassFilter(left_foot_acc,5, freq);
+    right_foot_acc_5 = applyLowpassFilter(right_foot_acc,5, freq);
+    
+    subplot(3,1,1);
+    plot(left_foot_acc(:,1))
+    title('left foot accelerometer data, filtered with a low-pass at 12Hz')
+    ylabel('acceleration in g') 
+    xlabel('time samples (sampled at 500Hz)') 
+    
+    subplot(3,1,2);
+    plot(left_foot_acc_12(:,1))
+    title('left foot accelerometer data, filtered with a low-pass at 12Hz')
+    ylabel('acceleration in g') 
+    xlabel('time samples (sampled at 500Hz)') 
+
+    subplot(3,1,3); 
+    plot(left_foot_acc_5(:,1))
+    title('left foot accelerometer data, filtered with a low-pass at 5Hz')
+    ylabel('angular velocity in g') 
+    xlabel('time samples (sampled at 500Hz)') 
+    
+    set(gcf,'color','w');
+    
     
 %% Exercice 1.A.3 (Event Detection)
     % detect IC, TC, FF for all midswing-to-midswing cycles (Left foot).
@@ -141,13 +176,20 @@ function main()
     
     freq = 1/data.imu.left.time(2);
     
+    ff_thresh = -50;
+    
     left_windows = cell(size(left_midswing,2)-1,1);
     left_windows_flt = cell(size(left_midswing,2)-1,1);
+    right_windows = cell(size(left_midswing,2)-1,1);
+    right_windows_flt = cell(size(left_midswing,2)-1,1);
     
-    left_IC_events = []
-    left_TC_events = []
+    left_IC_events = [];
+    left_TC_events = [];
+    left_FF = [];
+    
     % segmenting the gyro data midswing to midswing
     
+    %left foot
     for i = 2:1:size(left_midswing,2)
        t0 = left_midswing(i-1);
        t1 = left_midswing(i);
@@ -155,41 +197,128 @@ function main()
        left_windows_flt{i} = applyLowpassFilter(left_windows{i},5,freq);
        subplot(6,4,i-1)
        plot(left_windows_flt{i})
+       
        %detecting the IC and TC
        half = ceil(size(left_windows{i},1)/2);
        strike_phase = left_windows_flt{i}(1:half);
        lift_phase = left_windows_flt{i}(half+1:size(left_windows{i},1));
-       [~,ic_event] = min(strike_phase)
-       left_IC_events = [left_IC_events,]
+       [~,ic_event] = min(strike_phase);
+       left_IC_events = [left_IC_events,ic_event];
+       [~,tc_event] = min(lift_phase);
+       tc_event = tc_event + half;
+       left_TC_events = [left_TC_events,tc_event];
+       
+       %%quantifying FF
+       ff_window = left_windows_flt{i}(ic_event:tc_event);
+       ff_val = sum(ff_window > -50);
+       left_FF = [left_FF, ff_val];
+       
+       %plot the detection
+       subplot(6,4,i-1)
+       plot(left_windows_flt{i})
+       xline(ic_event)
+       xline(tc_event)
     end
+    
+    sgtitle('Pitch gyro data (in deg/s) for midswing-to-midswing segments of left-foot')
     
     %%
     
-    % add results to the output structure
-    scriptOutResults.imu.leftIC = []; % insert your detection of IC
-    scriptOutResults.imu.leftTC = []; % insert your detection of TC
-    scriptOutResults.imu.leftFF = []; % insert your detection of FF
-    % detect IC, TC, FF for all midswing-to-midswing cycles (Right foot).
-    % <<< ENTER YOUR CODE HERE >>>
+    
+    right_IC_events = [];
+    right_TC_events = [];
+    right_FF = [];
+    
+    %right foot
+    for i = 2:1:size(right_midswing,2)
+       t0 = right_midswing(i-1);
+       t1 = right_midswing(i);
+       right_windows{i} = right_foot_gyro(t0:t1,3);
+       right_windows_flt{i} = applyLowpassFilter(right_windows{i},5,freq);
+       
+       %detecting the IC and TC
+       half = ceil(size(right_windows{i},1)/2);
+       strike_phase = right_windows_flt{i}(1:half);
+       lift_phase = right_windows_flt{i}(half+1:size(right_windows{i},1));
+       [~,ic_event] = min(strike_phase);
+       right_IC_events = [right_IC_events,ic_event];
+       [~,tc_event] = min(lift_phase);
+       tc_event = tc_event+half;
+       right_TC_events = [right_TC_events,tc_event];
+       
+       %%quantifying FF
+       ff_window = right_windows_flt{i}(ic_event:tc_event);
+       ff_val = sum(ff_window > -50);
+       right_FF = [right_FF, ff_val];
+       
+       %plot the detection
+       subplot(6,4,i-1)
+       plot(right_windows_flt{i})
+       xline(ic_event)
+       xline(tc_event)
+       right_FF = [right_FF, (tc_event - ic_event)];
+    end
+    
+    sgtitle('Pitch gyro data (in deg/s) for midswing-to-midswing segments of right-foot')
+    %%
+    
+    subplot(2,1,1)
+    hist(left_IC_events)
+    subplot(2,1,2)
+    hist(left_TC_events)
+    %%
     
     % add results to the output structure
-    scriptOutResults.imu.rightIC = []; % insert your detection of IC
-    scriptOutResults.imu.rightTC = []; % insert your detection of TC
-    scriptOutResults.imu.rightFF = []; % insert your detection of FF
+    scriptOutResults.imu.leftIC = left_IC_events; % insert your detection of IC
+    scriptOutResults.imu.leftTC = right_IC_events; % insert your detection of TC
+    scriptOutResults.imu.leftFF = left_FF*(1/freq); % insert your detection of FF
+    % detect IC, TC, FF for all midswing-to-midswing cycles (Right foot).
+    
+    % add results to the output structure
+    scriptOutResults.imu.rightIC = right_IC_events; % insert your detection of IC
+    scriptOutResults.imu.rightTC = right_TC_events; % insert your detection of TC
+    scriptOutResults.imu.rightFF = right_FF*(1/freq); % insert your detection of FF
         
 %% Exercice 1.A.4 (Plot Events)
     % plot detection results for right or left foot
-    % <<< ENTER YOUR CODE HERE >>>
     
+    %plotting 4 cycles
+    subplot(1,1,1)
+    gyro = right_foot_gyro(1:right_midswing(5),3);
+    
+    
+    plot(gyro);
+    xlim([200,2000])
+    
+    
+    for t = 1:1:4
+        xline(right_midswing(t),'--')
+        xline(right_IC_events(t)+right_midswing(t)-right_midswing(1),'-r')
+        xline(right_TC_events(t)+right_midswing(t)-right_midswing(1),'-g')
+    end
+    
+    xlabel('Red : IC events, Green : TC event, Black : Midswing events') 
 %% Exercice 1.A.5 (Compute Gait Cycle, Cadence, Stance Percentage)
     % compute the stance phase percentage, gait cycle time and cadence for
     % left and right leg.
-    % <<< ENTER YOUR CODE HERE >>>
     
-    scriptOutResults.imu.leftMeanGaitCycleTime = []; % insert the mean gait cycle time of the left foot
-    scriptOutResults.imu.leftSTDGaitCycleTime = []; % insert the gait cycle time STD of the left foot
-    scriptOutResults.imu.rightMeanGaitCycleTime = []; % insert the mean gait cycle time of the right foot
-    scriptOutResults.imu.rightSTDGaitCycleTime = []; % insert the gait cycle time STD of the right foot
+    right_gait_times = [];
+    for i = 2:1:size(right_midswing,2)
+       right_gait_times = [right_gait_times, (1/freq)*(right_midswing(i)-right_midswing(i-1))];
+    end
+    
+    left_gait_times = [];
+    for i = 2:1:size(right_midswing,2)
+       left_gait_times = [left_gait_times, (1/freq)*(right_midswing(i)-right_midswing(i-1))];
+    end
+    
+    
+    
+    
+    scriptOutResults.imu.leftMeanGaitCycleTime = [mean(left_gait_times)]; % insert the mean gait cycle time of the left foot
+    scriptOutResults.imu.leftSTDGaitCycleTime = [std(left_gait_times)]; % insert the gait cycle time STD of the left foot
+    scriptOutResults.imu.rightMeanGaitCycleTime = [mean(right_gait_times)]; % insert the mean gait cycle time of the right foot
+    scriptOutResults.imu.rightSTDGaitCycleTime = [std(right_gait_times)]; % insert the gait cycle time STD of the right foot
     scriptOutResults.imu.leftMeanCadence = []; % insert the mean cadence of the left foot
     scriptOutResults.imu.leftSTDCadence = []; % insert the cadence STD of the left foot
     scriptOutResults.imu.rightMeanCadence = []; % insert the mean cadence of the left foot
@@ -216,7 +345,8 @@ function main()
   
 %% Exercice 1.A.9 (Fast fourier transform)
 % You can use fft_plot function
-    % <<< ENTER YOUR CODE HERE  >>>
+    close all
+    fft_plot(right_foot_acc(:,3)-mean(right_foot_acc(:,3)),freq)
     
 %% Exercice 1.A.10 (Bonus)(Estimate stride from fft)
 % Estimate stride time from fft
@@ -226,7 +356,26 @@ function main()
 %% Exercice 1.B.1 (Estimate the Pitch Angle)
     % compute the pitch angle from the gyroscope pitch angular velocity.
     % <<< ENTER YOUR CODE HERE >>>
+    
+    freq = 1/data.imu.left.time(2);
       
+    %right foot
+    for i = 2:1:size(right_midswing,2)
+       t0 = right_midswing(i-1);
+       t1 = right_midswing(i);
+       right_windows{i} = right_foot_gyro(t0:t1,3);
+       right_windows_flt{i} = applyLowpassFilter(right_windows{i},5,freq);
+
+       intgr = [];
+       for t = 1:1:size(right_windows_flt,1)
+          intgr = [intgr,trapz(right_windows_flt{i}(1:t))];
+       end
+       
+       
+       subplot(6,4,i-1)
+       plot(intgr)
+    end
+    
 %% Exercice 1.B.2 (Remove the Drift)
     
     % correct the drift on the pitch angle signal
@@ -246,7 +395,9 @@ function main()
     % gravity vector in the right foot IMU TF
     % <<< ENTER YOUR CODE HERE >>>
     
-    scriptOutResults.imu.rightGravityTF = []; % insert right foot TFg here
+    avg_static = mean(data.imu.right.accelstatic, 1);
+    
+    scriptOutResults.imu.rightGravityTF = avg_static; % insert right foot TFg here
     
 %% Exercice 2.A.2 (Gravity vector in the AF)
     % Express the gravity vector in the anatomical frame
@@ -255,12 +406,20 @@ function main()
 %% Exercice 2.A.3 (Extract the rotation matrix between TFg and Y_AF )
     % find R_TFg_Y_AF between TFg and Y_AF
     % <<< ENTER YOUR CODE HERE >>>
-    
-    scriptOutResults.imu.rightRotationYAF = []; % insert R_TFg_Y_AF
+    Y_AF = data.imu.right.accelstatic(:,2);
+   
+    %scriptOutResults.imu.rightRotationYAF = R_TFg_Y_AF = get3DRotationMatrixA2B(scriptOutResults.imu.rightGravityTF, Y_AF);; % insert R_TFg_Y_AF
         
 %% Exercice 2.A.4 (Plot gravity before and after rotation) 
     % plot the static signals before and after the rotation
     % <<< ENTER YOUR CODE HERE >>>
+    subplot(2,1,1)
+    plot(Y_AF,'-r', 'DisplayName','Before rotation')
+    
+    subplot(2,1,2)
+    plot(scriptOutResults.imu.rightRotationYAF,'-b', 'DisplayName', 'After rotation')
+    
+    set(gcf,'color','w');
     
 %% Exercice 2.A.5 (Describe a method for alignment in the transvers plane) 
     % <<< No CODE >>>
@@ -269,26 +428,50 @@ function main()
     % plot the three components of the leftCenterFoot marker during walking
     % label the direction of walking and vertical component in the plot
     % <<< ENTER YOUR CODE HERE >>>
+    
+    subplot(3,1,1)
+    plot(data.motioncameras.static.leftCenterFoot(:,1), 'LineWidth',1);
+    title('Z axis') % acceleration is approximately constant, amplitude 0.2
+    xlim([0,1000])
+    
+    subplot(3,1,2)
+    plot(data.motioncameras.static.leftCenterFoot(:,2), 'LineWidth',1);
+    title('X axis') % cycles, with amplitude 0.5
+    xlim([0,1000])
+    
+    subplot(3,1,3)
+    plot(data.motioncameras.static.leftCenterFoot(:,3), 'LineWidth',1);
+    title('Y axis') % varies in a similar manner as above, amplitude 0.4
+    xlim([0,1000])
         
 %% Exercice 2.B.2 (Construct the technical frame of the left foot)
     % construct the technical frame of the left foot
     % <<< ENTER YOUR CODE HERE >>>
-   
     
+    center_m = mean(data.motioncameras.static.leftCenterFoot, 1);
+    lateral_m = mean(data.motioncameras.static.leftLateralFoot, 1);
+    medial_m = mean(data.motioncameras.static.leftMedialFoot, 1);
     
-    scriptOutResults.motioncameras.tfX = []; % insert TF x-axis
-    scriptOutResults.motioncameras.tfY = []; % insert TF y-axis
-    scriptOutResults.motioncameras.tfZ = []; % insert TF z-axis
+    scriptOutResults.motioncameras.tfX = [center_m(2), lateral_m(2), medial_m(2)]; % insert TF x-axis
+    scriptOutResults.motioncameras.tfY = [center_m(3), lateral_m(3), medial_m(3)]; % insert TF y-axis
+    scriptOutResults.motioncameras.tfZ = [center_m(1), lateral_m(1), medial_m(1)]; % insert TF z-axis
+
         
 %% Exercice 2.B.3 (Compute the rotation matrix)
     % compute R_TF_GF
     % <<< ENTER YOUR CODE HERE >>>
+    TF = [scriptOutResults.motioncameras.tfX; 
+          scriptOutResults.motioncameras.tfY; 
+          scriptOutResults.motioncameras.tfZ];
+      
+    GF = []; % � d�finir
     
-    scriptOutResults.motioncameras.R_TF_GF = []; % insert R_TF_GF
+    scriptOutResults.motioncameras.R_TF_GF = get3DRotationMatrixA2B(TF,GF); % insert R_TF_GF
         
 %% Exercice 2.B.4 (Construct the anatomical frame of the left foot)
     % construct the anatomical frame of the left foot
     % <<< ENTER YOUR CODE HERE >>>
+    data.motioncameras.static.leftMedialMalleolus;
     
     scriptOutResults.motioncameras.afX = []; % insert AF x-axis
     scriptOutResults.motioncameras.afY = []; % insert AF y-axis
@@ -297,10 +480,26 @@ function main()
 %% Exercice 2.B.5 (Orthogonality)
     % Check the orthogonality of the defined coordinate system
     % <<< ENTER YOUR CODE HERE >>>
+    
+    % If orthogonal, <TF_i, TF_j> = 0 for i ? j
+    if (scriptOutResults.motioncameras.afX * scriptOutResults.motioncameras.afY == 0 || ...
+        scriptOutResults.motioncameras.afX * scriptOutResults.motioncameras.afZ == 0 || ...
+        scriptOutResults.motioncameras.afY * scriptOutResults.motioncameras.afZ == 0) 
+        
+        disp('Careful : The vector basis for TF is not orthogonal')
+    end
 
 %% Exercice 2.B.6 (Compute the rotation matrix between AF and GF)
     % compute R_AF_GF
-    % <<< ENTER YOUR CODE HERE >>>    
+    % <<< ENTER YOUR CODE HERE >>>
+    
+    AF = [scriptOutResults.motioncameras.afX; 
+          scriptOutResults.motioncameras.afY; 
+          scriptOutResults.motioncameras.afZ];
+      
+    GF = []; % � d�finir
+    
+    scriptOutResults.motioncameras.R_AF_GF = get3DRotationMatrixA2B(AF,GF); % insert R_AF_GF
     
     scriptOutResults.motioncameras.R_AF_GF = []; % insert R_AF_GF
       
@@ -308,7 +507,7 @@ function main()
     % compute R_TF_AF
     % <<< ENTER YOUR CODE HERE >>>
     
-    scriptOutResults.motioncameras.R_TF_AF = []; % insert R_TF_AF
+    scriptOutResults.motioncameras.R_TF_AF = get3DRotationMatrixA2B(TF, AF); % insert R_TF_AF
        
 %% Exercice 2.C.1 (compute TF for walking)
     % (1) compute TF for walking
@@ -331,6 +530,9 @@ function main()
 %% Exercice 3.A.1 (extract events using insole)
     % compute the force signal for all cell (transform pressure into force)
     % <<< ENTER YOUR CODE HERE >>>
+    
+    F_rear_right = (data.insole.right.pressure(:, 1:33)).*(data.insole.right.area(:, 1:33));
+    F_fore_right = (data.insole.right.pressure(:, 55:99)).*(data.insole.right.area(:, 55:99));
        
     % detect the sample index of the multiple IC, TS, HO, TO
     % <<< ENTER YOUR CODE HERE >>>

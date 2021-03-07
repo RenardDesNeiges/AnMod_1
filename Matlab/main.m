@@ -176,13 +176,20 @@ function main()
     
     freq = 1/data.imu.left.time(2);
     
+    ff_thresh = -50;
+    
     left_windows = cell(size(left_midswing,2)-1,1);
     left_windows_flt = cell(size(left_midswing,2)-1,1);
+    right_windows = cell(size(left_midswing,2)-1,1);
+    right_windows_flt = cell(size(left_midswing,2)-1,1);
     
     left_IC_events = [];
     left_TC_events = [];
+    left_FF = [];
+    
     % segmenting the gyro data midswing to midswing
     
+    %left foot
     for i = 2:1:size(left_midswing,2)
        t0 = left_midswing(i-1);
        t1 = left_midswing(i);
@@ -190,6 +197,7 @@ function main()
        left_windows_flt{i} = applyLowpassFilter(left_windows{i},5,freq);
        subplot(6,4,i-1)
        plot(left_windows_flt{i})
+       
        %detecting the IC and TC
        half = ceil(size(left_windows{i},1)/2);
        strike_phase = left_windows_flt{i}(1:half);
@@ -197,8 +205,61 @@ function main()
        [~,ic_event] = min(strike_phase);
        left_IC_events = [left_IC_events,ic_event];
        [~,tc_event] = min(lift_phase);
-       left_TC_events = [left_IC_events,ic_event+half];
+       tc_event = tc_event + half;
+       left_TC_events = [left_TC_events,tc_event];
+       
+       %%quantifying FF
+       ff_window = left_windows_flt{i}(ic_event:tc_event);
+       ff_val = sum(ff_window > -50);
+       left_FF = [left_FF, ff_val];
+       
+       %plot the detection
+       subplot(6,4,i-1)
+       plot(left_windows_flt{i})
+       xline(ic_event)
+       xline(tc_event)
     end
+    
+    sgtitle('Pitch gyro data (in deg/s) for midswing-to-midswing segments of left-foot')
+    
+    %%
+    
+    
+    right_IC_events = [];
+    right_TC_events = [];
+    right_FF = [];
+    
+    %right foot
+    for i = 2:1:size(right_midswing,2)
+       t0 = right_midswing(i-1);
+       t1 = right_midswing(i);
+       right_windows{i} = right_foot_gyro(t0:t1,3);
+       right_windows_flt{i} = applyLowpassFilter(right_windows{i},5,freq);
+       
+       %detecting the IC and TC
+       half = ceil(size(right_windows{i},1)/2);
+       strike_phase = right_windows_flt{i}(1:half);
+       lift_phase = right_windows_flt{i}(half+1:size(right_windows{i},1));
+       [~,ic_event] = min(strike_phase);
+       right_IC_events = [right_IC_events,ic_event];
+       [~,tc_event] = min(lift_phase);
+       tc_event = tc_event+half;
+       right_TC_events = [right_TC_events,tc_event];
+       
+       %%quantifying FF
+       ff_window = right_windows_flt{i}(ic_event:tc_event);
+       ff_val = sum(ff_window > -50);
+       right_FF = [right_FF, ff_val];
+       
+       %plot the detection
+       subplot(6,4,i-1)
+       plot(right_windows_flt{i})
+       xline(ic_event)
+       xline(tc_event)
+       right_FF = [right_FF, (tc_event - ic_event)];
+    end
+    
+    sgtitle('Pitch gyro data (in deg/s) for midswing-to-midswing segments of right-foot')
     %%
     
     subplot(2,1,1)
@@ -208,30 +269,56 @@ function main()
     %%
     
     % add results to the output structure
-    scriptOutResults.imu.leftIC = []; % insert your detection of IC
-    scriptOutResults.imu.leftTC = []; % insert your detection of TC
-    scriptOutResults.imu.leftFF = []; % insert your detection of FF
+    scriptOutResults.imu.leftIC = left_IC_events; % insert your detection of IC
+    scriptOutResults.imu.leftTC = right_IC_events; % insert your detection of TC
+    scriptOutResults.imu.leftFF = left_FF*(1/freq); % insert your detection of FF
     % detect IC, TC, FF for all midswing-to-midswing cycles (Right foot).
-    % <<< ENTER YOUR CODE HERE >>>
     
     % add results to the output structure
-    scriptOutResults.imu.rightIC = []; % insert your detection of IC
-    scriptOutResults.imu.rightTC = []; % insert your detection of TC
-    scriptOutResults.imu.rightFF = []; % insert your detection of FF
+    scriptOutResults.imu.rightIC = right_IC_events; % insert your detection of IC
+    scriptOutResults.imu.rightTC = right_TC_events; % insert your detection of TC
+    scriptOutResults.imu.rightFF = right_FF*(1/freq); % insert your detection of FF
         
 %% Exercice 1.A.4 (Plot Events)
     % plot detection results for right or left foot
-    % <<< ENTER YOUR CODE HERE >>>
     
+    %plotting 4 cycles
+    subplot(1,1,1)
+    gyro = right_foot_gyro(1:right_midswing(5),3);
+    
+    
+    plot(gyro);
+    xlim([200,2000])
+    
+    
+    for t = 1:1:4
+        xline(right_midswing(t),'--')
+        xline(right_IC_events(t)+right_midswing(t)-right_midswing(1),'-r')
+        xline(right_TC_events(t)+right_midswing(t)-right_midswing(1),'-g')
+    end
+    
+    xlabel('Red : IC events, Green : TC event, Black : Midswing events') 
 %% Exercice 1.A.5 (Compute Gait Cycle, Cadence, Stance Percentage)
     % compute the stance phase percentage, gait cycle time and cadence for
     % left and right leg.
-    % <<< ENTER YOUR CODE HERE >>>
     
-    scriptOutResults.imu.leftMeanGaitCycleTime = []; % insert the mean gait cycle time of the left foot
-    scriptOutResults.imu.leftSTDGaitCycleTime = []; % insert the gait cycle time STD of the left foot
-    scriptOutResults.imu.rightMeanGaitCycleTime = []; % insert the mean gait cycle time of the right foot
-    scriptOutResults.imu.rightSTDGaitCycleTime = []; % insert the gait cycle time STD of the right foot
+    right_gait_times = [];
+    for i = 2:1:size(right_midswing,2)
+       right_gait_times = [right_gait_times, (1/freq)*(right_midswing(i)-right_midswing(i-1))];
+    end
+    
+    left_gait_times = [];
+    for i = 2:1:size(right_midswing,2)
+       left_gait_times = [left_gait_times, (1/freq)*(right_midswing(i)-right_midswing(i-1))];
+    end
+    
+    
+    
+    
+    scriptOutResults.imu.leftMeanGaitCycleTime = [mean(left_gait_times)]; % insert the mean gait cycle time of the left foot
+    scriptOutResults.imu.leftSTDGaitCycleTime = [std(left_gait_times)]; % insert the gait cycle time STD of the left foot
+    scriptOutResults.imu.rightMeanGaitCycleTime = [mean(right_gait_times)]; % insert the mean gait cycle time of the right foot
+    scriptOutResults.imu.rightSTDGaitCycleTime = [std(right_gait_times)]; % insert the gait cycle time STD of the right foot
     scriptOutResults.imu.leftMeanCadence = []; % insert the mean cadence of the left foot
     scriptOutResults.imu.leftSTDCadence = []; % insert the cadence STD of the left foot
     scriptOutResults.imu.rightMeanCadence = []; % insert the mean cadence of the left foot
@@ -258,7 +345,8 @@ function main()
   
 %% Exercice 1.A.9 (Fast fourier transform)
 % You can use fft_plot function
-    % <<< ENTER YOUR CODE HERE  >>>
+    close all
+    fft_plot(right_foot_acc(:,3)-mean(right_foot_acc(:,3)),freq)
     
 %% Exercice 1.A.10 (Bonus)(Estimate stride from fft)
 % Estimate stride time from fft
@@ -268,7 +356,23 @@ function main()
 %% Exercice 1.B.1 (Estimate the Pitch Angle)
     % compute the pitch angle from the gyroscope pitch angular velocity.
     % <<< ENTER YOUR CODE HERE >>>
+    
+    freq = 1/data.imu.left.time(2);
       
+    %right foot
+    for i = 2:1:size(right_midswing,2)
+       t0 = right_midswing(i-1);
+       t1 = right_midswing(i);
+       right_windows{i} = right_foot_gyro(t0:t1,3);
+       right_windows_flt{i} = applyLowpassFilter(right_windows{i},5,freq);
+       time = 1:(1/freq):(1/freq)*size(right_windows{i});
+       %intgr = trapz(right_windows_flt{i},time);
+       
+       
+       subplot(6,4,i-1)
+       plot(intgr)
+    end
+    
 %% Exercice 1.B.2 (Remove the Drift)
     
     % correct the drift on the pitch angle signal
