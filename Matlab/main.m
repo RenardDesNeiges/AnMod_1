@@ -253,7 +253,9 @@ function main()
     % gravity vector in the right foot IMU TF
     % <<< ENTER YOUR CODE HERE >>>
     
-    scriptOutResults.imu.rightGravityTF = []; % insert right foot TFg here
+    avg_static = mean(data.imu.right.accelstatic, 1);
+    
+    scriptOutResults.imu.rightGravityTF = avg_static; % insert right foot TFg here
     
 %% Exercice 2.A.2 (Gravity vector in the AF)
     % Express the gravity vector in the anatomical frame
@@ -262,12 +264,20 @@ function main()
 %% Exercice 2.A.3 (Extract the rotation matrix between TFg and Y_AF )
     % find R_TFg_Y_AF between TFg and Y_AF
     % <<< ENTER YOUR CODE HERE >>>
-    
-    scriptOutResults.imu.rightRotationYAF = []; % insert R_TFg_Y_AF
+    Y_AF = data.imu.right.accelstatic(:,2);
+   
+    scriptOutResults.imu.rightRotationYAF = R_TFg_Y_AF = get3DRotationMatrixA2B(scriptOutResults.imu.rightGravityTF, Y_AF);; % insert R_TFg_Y_AF
         
 %% Exercice 2.A.4 (Plot gravity before and after rotation) 
     % plot the static signals before and after the rotation
     % <<< ENTER YOUR CODE HERE >>>
+    subplot(2,1,1)
+    plot(Y_AF,'-r', 'DisplayName','Before rotation')
+    
+    subplot(2,1,2)
+    plot(scriptOutResults.imu.rightRotationYAF,'-b', 'DisplayName', 'After rotation')
+    
+    set(gcf,'color','w');
     
 %% Exercice 2.A.5 (Describe a method for alignment in the transvers plane) 
     % <<< No CODE >>>
@@ -276,26 +286,50 @@ function main()
     % plot the three components of the leftCenterFoot marker during walking
     % label the direction of walking and vertical component in the plot
     % <<< ENTER YOUR CODE HERE >>>
+    
+    subplot(3,1,1)
+    plot(data.motioncameras.static.leftCenterFoot(:,1), 'LineWidth',1);
+    title('Z axis') % acceleration is approximately constant, amplitude 0.2
+    xlim([0,1000])
+    
+    subplot(3,1,2)
+    plot(data.motioncameras.static.leftCenterFoot(:,2), 'LineWidth',1);
+    title('X axis') % cycles, with amplitude 0.5
+    xlim([0,1000])
+    
+    subplot(3,1,3)
+    plot(data.motioncameras.static.leftCenterFoot(:,3), 'LineWidth',1);
+    title('Y axis') % varies in a similar manner as above, amplitude 0.4
+    xlim([0,1000])
         
 %% Exercice 2.B.2 (Construct the technical frame of the left foot)
     % construct the technical frame of the left foot
     % <<< ENTER YOUR CODE HERE >>>
-   
     
+    center_m = mean(data.motioncameras.static.leftCenterFoot, 1);
+    lateral_m = mean(data.motioncameras.static.leftLateralFoot, 1);
+    medial_m = mean(data.motioncameras.static.leftMedialFoot, 1);
     
-    scriptOutResults.motioncameras.tfX = []; % insert TF x-axis
-    scriptOutResults.motioncameras.tfY = []; % insert TF y-axis
-    scriptOutResults.motioncameras.tfZ = []; % insert TF z-axis
+    scriptOutResults.motioncameras.tfX = [center_m(2), lateral_m(2), medial_m(2)]; % insert TF x-axis
+    scriptOutResults.motioncameras.tfY = [center_m(3), lateral_m(3), medial_m(3)]; % insert TF y-axis
+    scriptOutResults.motioncameras.tfZ = [center_m(1), lateral_m(1), medial_m(1)]; % insert TF z-axis
+
         
 %% Exercice 2.B.3 (Compute the rotation matrix)
     % compute R_TF_GF
     % <<< ENTER YOUR CODE HERE >>>
+    TF = [scriptOutResults.motioncameras.tfX; 
+          scriptOutResults.motioncameras.tfY; 
+          scriptOutResults.motioncameras.tfZ];
+      
+    GF = []; % à définir
     
-    scriptOutResults.motioncameras.R_TF_GF = []; % insert R_TF_GF
+    scriptOutResults.motioncameras.R_TF_GF = get3DRotationMatrixA2B(TF,GF); % insert R_TF_GF
         
 %% Exercice 2.B.4 (Construct the anatomical frame of the left foot)
     % construct the anatomical frame of the left foot
     % <<< ENTER YOUR CODE HERE >>>
+    data.motioncameras.static.leftMedialMalleolus;
     
     scriptOutResults.motioncameras.afX = []; % insert AF x-axis
     scriptOutResults.motioncameras.afY = []; % insert AF y-axis
@@ -304,10 +338,26 @@ function main()
 %% Exercice 2.B.5 (Orthogonality)
     % Check the orthogonality of the defined coordinate system
     % <<< ENTER YOUR CODE HERE >>>
+    
+    % If orthogonal, <TF_i, TF_j> = 0 for i ? j
+    if (scriptOutResults.motioncameras.afX * scriptOutResults.motioncameras.afY == 0 || ...
+        scriptOutResults.motioncameras.afX * scriptOutResults.motioncameras.afZ == 0 || ...
+        scriptOutResults.motioncameras.afY * scriptOutResults.motioncameras.afZ == 0) 
+        
+        disp('Careful : The vector basis for TF is not orthogonal')
+    end
 
 %% Exercice 2.B.6 (Compute the rotation matrix between AF and GF)
     % compute R_AF_GF
-    % <<< ENTER YOUR CODE HERE >>>    
+    % <<< ENTER YOUR CODE HERE >>>
+    
+    AF = [scriptOutResults.motioncameras.afX; 
+          scriptOutResults.motioncameras.afY; 
+          scriptOutResults.motioncameras.afZ];
+      
+    GF = []; % à définir
+    
+    scriptOutResults.motioncameras.R_AF_GF = get3DRotationMatrixA2B(AF,GF); % insert R_AF_GF
     
     scriptOutResults.motioncameras.R_AF_GF = []; % insert R_AF_GF
       
@@ -315,7 +365,7 @@ function main()
     % compute R_TF_AF
     % <<< ENTER YOUR CODE HERE >>>
     
-    scriptOutResults.motioncameras.R_TF_AF = []; % insert R_TF_AF
+    scriptOutResults.motioncameras.R_TF_AF = get3DRotationMatrixA2B(TF, AF); % insert R_TF_AF
        
 %% Exercice 2.C.1 (compute TF for walking)
     % (1) compute TF for walking
@@ -338,6 +388,9 @@ function main()
 %% Exercice 3.A.1 (extract events using insole)
     % compute the force signal for all cell (transform pressure into force)
     % <<< ENTER YOUR CODE HERE >>>
+    
+    F_rear_right = (data.insole.right.pressure(:, 1:33)).*(data.insole.right.area(:, 1:33));
+    F_fore_right = (data.insole.right.pressure(:, 55:99).*(data.insole.right.are(:, 55:99));
        
     % detect the sample index of the multiple IC, TS, HO, TO
     % <<< ENTER YOUR CODE HERE >>>
