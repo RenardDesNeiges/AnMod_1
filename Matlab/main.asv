@@ -139,6 +139,32 @@ function main()
     
     %%
     
+    freq = 1/data.imu.left.time(2);
+    
+    left_windows = cell(size(left_midswing,2)-1,1);
+    left_windows_flt = cell(size(left_midswing,2)-1,1);
+    
+    left_IC_events = []
+    left_TC_events = []
+    % segmenting the gyro data midswing to midswing
+    
+    for i = 2:1:size(left_midswing,2)
+       t0 = left_midswing(i-1);
+       t1 = left_midswing(i);
+       left_windows{i} = left_foot_gyro(t0:t1,3);
+       left_windows_flt{i} = applyLowpassFilter(left_windows{i},5,freq);
+       subplot(6,4,i-1)
+       plot(left_windows_flt{i})
+       %detecting the IC and TC
+       half = ceil(size(left_windows{i},1)/2);
+       strike_phase = left_windows_flt{i}(1:half);
+       lift_phase = left_windows_flt{i}(half+1:size(left_windows{i},1));
+       [~,ic_event] = min(strike_phase)
+       left_IC_events = [left_IC_events,]
+    end
+    
+    %%
+    
     % add results to the output structure
     scriptOutResults.imu.leftIC = []; % insert your detection of IC
     scriptOutResults.imu.leftTC = []; % insert your detection of TC
