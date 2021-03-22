@@ -99,10 +99,13 @@ function main()
     %% unfiltered plot
     %Not used in the report
     subplot(2,1,1);
-    plot(left_foot_acc)
+    
+    plot(left_foot_acc(1:2000,:))
+    legend({'X', 'Y', 'Z'},'Location','northwest')
 
     subplot(2,1,2); 
-    plot(right_foot_acc)
+    plot(right_foot_acc(1:2000,:))
+    legend({'X', 'Y', 'Z'},'Location','northwest')
     
     set(gcf,'color','w');
     
@@ -327,7 +330,7 @@ function main()
     for i = 2:1:size(right_midswing,2)
        right_gait_times = [right_gait_times, (1/freq)*(right_midswing(i)-right_midswing(i-1))];
     end
-    
+        
     left_gait_times = [];
     for i = 2:1:size(right_midswing,2)
        left_gait_times = [left_gait_times, (1/freq)*(right_midswing(i)-right_midswing(i-1))];
@@ -365,9 +368,19 @@ function main()
     % <<< No CODE >>>
   
 %% Exercice 1.A.9 (Fast fourier transform)
-% You can use fft_plot function
-    close all
-    fft_plot(right_foot_acc(:,3)-mean(right_foot_acc(:,3)),freq)
+    % You can use fft_plot function
+    %%
+    close all 
+    
+    subplot(2,1,1)
+    fft_plot(right_foot_acc(:,3)-mean(right_foot_acc(:,3)),freq);
+    title('Fast Fourier Transform of Right Foot Vertical Acceleration')
+    
+    subplot(2,1,2)    
+    fft_plot(right_foot_gyro(:,3)-mean(right_foot_gyro(:,3)),freq);
+    title('Fast Fourier Transform of Right Foot Gyroscope')
+    
+    set(gcf,'color','w');
     
 %% Exercice 1.A.10 (Bonus)(Estimate stride from fft)
 % Estimate stride time from fft
@@ -377,12 +390,13 @@ function main()
 %% Exercice 1.B.1 (Estimate the Pitch Angle)
     % compute the pitch angle from the gyroscope pitch angular velocity.
     % <<< ENTER YOUR CODE HERE >>>
-    
+    close all
     freq = 1/data.imu.left.time(2);
     
-    close all
-    flt_d = applyLowpassFilter(right_foot_gyro(:,3),5,freq)
-    intgr = cumtrapz(flt_d)
+    %%
+    
+    flt_d = applyLowpassFilter(right_foot_gyro(:,3),5,freq);
+    intgr = cumtrapz(flt_d);
     plot(intgr)
     
      
@@ -390,18 +404,53 @@ function main()
 %% Exercice 1.B.2 (Remove the Drift)
     %Brouillon code, faudrait faire pareil mais moins moche
 
+    fit = polyfit(1:1:size(intgr),intgr,1);
+    mean_est = polyval(fit,1:1:size(intgr));
+    
+    subplot(2,1,1)
+    plot(intgr)
+    hold on 
+    plot(mean_est)
+    hold off
+    
+    
+    averaged = intgr-mean_est';
+    subplot(2,1,2)
+    plot(averaged)
+    
+    %%
+    corrected_right_angle = [];
     %right foot
-    for i = 2:1:size(right_midswing,2)
-       t0 = right_midswing(i-1);
-       t1 = right_midswing(i);
+    for i = 2:1:size(right_mid_FF,2)
+       t0 = right_mid_FF(i-1)+right_midswing(i-1);
+       t1 = right_mid_FF(i)+right_midswing(i);
        right_windows{i} = right_foot_gyro(t0:t1,3);
        right_windows_flt{i} = applyLowpassFilter(right_windows{i},5,freq);
 
        intgr = cumtrapz(right_windows_flt{i});
        
+       slope = intgr(end)/size(intgr,1);
+       correction = (1:1:size(intgr,1))*slope;
+       %fit = polyfit(1:1:size(intgr),intgr,1);
+       %mean_est = polyval(fit,1:1:size(intgr));
+       corrected = (intgr-correction');
+       
        subplot(6,4,i-1)
-       plot(intgr)
+       plot(corrected)
+       
+       corrected_right_angle = [corrected_right_angle,corrected'];
     end
+    %%
+    subplot(1,1,1)
+    
+    plot(corrected_right_angle(500:6000))
+    xlim([0,5500])
+    title('corrected integrated foot angle using foot flat detection')
+    xlabel('time samples (sampled at 500Hz)')
+    ylabel('angle (in degrees)')
+    %%
+    subplot(1,1,1)
+    plot(corrected_right_angle())
     %%
     
     
@@ -412,7 +461,11 @@ function main()
     
     close all
     
+    subplot(2,1,1)
     plot(drift_sale)
+    
+    subplot(2,1,2)
+    plot(averaged)
     
     %% Drift Unser Edition
     
