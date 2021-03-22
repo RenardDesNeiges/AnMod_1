@@ -25,9 +25,8 @@ function main()
 
     % align gyroscope TF with the foot AF using function
     % alignGyroscope(data) and plot the results
-    % <<< ENTER YOUR CODE HERE >>>
     
-    %white background for nicer reports
+    
     
     
     %gyroscope data
@@ -47,9 +46,12 @@ function main()
     xlabel('time samples (sampled at 500Hz)') 
     legend({'transverse plane (yaw)', 'frontal plane (roll)', 'saggital plane (pitch)'},'Location','southwest')
     
+    %white background for nicer reports
     set(gcf,'color','w');
     
     %%
+    
+    %Not used in the report
     
     freq = 1/data.imu.left.time(2);
     data_1 = applyLowpassFilter(left_foot_gyro(:,1),5,freq);
@@ -69,6 +71,8 @@ function main()
     title('left saggital plane gyro, filtered at 5Hz')
     
     %%
+    
+    %Not used in the report
     
     %gyroscope data
     [left_foot_gyro,right_foot_gyro] = alignGyroscopeTF2AF(data);
@@ -93,7 +97,7 @@ function main()
     right_foot_acc = data.imu.right.accel;
     
     %% unfiltered plot
-    
+    %Not used in the report
     subplot(2,1,1);
     plot(left_foot_acc)
 
@@ -103,7 +107,7 @@ function main()
     set(gcf,'color','w');
     
     %% 12Hz lp plot
-    
+    %Not used in the report
     freq = 1/data.imu.left.time(2);
     
     left_foot_acc_12 = applyLowpassFilter(left_foot_acc,12, freq);
@@ -118,7 +122,7 @@ function main()
     set(gcf,'color','w');
     
     %% 5Hz lp plot
-    
+    %Not used in the report
     freq = 1/data.imu.left.time(2);
     
     left_foot_acc_5 = applyLowpassFilter(left_foot_acc,5, freq);
@@ -140,19 +144,19 @@ function main()
     right_foot_acc_5 = applyLowpassFilter(right_foot_acc,5, freq);
     
     subplot(3,1,1);
-    plot(left_foot_acc(:,1))
-    title('left foot accelerometer data, filtered with a low-pass at 12Hz')
+    plot(left_foot_acc(1:1000,1))
+    title('left foot accelerometer data, unfiltered')
     ylabel('acceleration in g') 
     xlabel('time samples (sampled at 500Hz)') 
     
     subplot(3,1,2);
-    plot(left_foot_acc_12(:,1))
+    plot(left_foot_acc_12(1:1000,1))
     title('left foot accelerometer data, filtered with a low-pass at 12Hz')
     ylabel('acceleration in g') 
     xlabel('time samples (sampled at 500Hz)') 
 
     subplot(3,1,3); 
-    plot(left_foot_acc_5(:,1))
+    plot(left_foot_acc_5(1:1000,1))
     title('left foot accelerometer data, filtered with a low-pass at 5Hz')
     ylabel('angular velocity in g') 
     xlabel('time samples (sampled at 500Hz)') 
@@ -175,17 +179,18 @@ function main()
     %%
     
     freq = 1/data.imu.left.time(2);
-    
     ff_thresh = -50;
     
     left_windows = cell(size(left_midswing,2)-1,1);
-    left_windows_flt = cell(size(left_midswing,2)-1,1);
-    right_windows = cell(size(left_midswing,2)-1,1);
-    right_windows_flt = cell(size(left_midswing,2)-1,1);
+    
     
     left_IC_events = [];
     left_TC_events = [];
     left_FF = [];
+    left_init_FF = [];
+    left_mid_FF = [];
+    
+    left_gyro_filtered = applyLowpassFilter(left_foot_gyro(:,3),5,freq);
     
     % segmenting the gyro data midswing to midswing
     
@@ -193,15 +198,15 @@ function main()
     for i = 2:1:size(left_midswing,2)
        t0 = left_midswing(i-1);
        t1 = left_midswing(i);
-       left_windows{i} = left_foot_gyro(t0:t1,3);
-       left_windows_flt{i} = applyLowpassFilter(left_windows{i},5,freq);
+       left_windows{i} = left_gyro_filtered(t0:t1);
+       left_windows{i} = applyLowpassFilter(left_windows{i},5,freq);
        subplot(6,4,i-1)
-       plot(left_windows_flt{i})
+       plot(left_windows{i})
        
        %detecting the IC and TC
        half = ceil(size(left_windows{i},1)/2);
-       strike_phase = left_windows_flt{i}(1:half);
-       lift_phase = left_windows_flt{i}(half+1:size(left_windows{i},1));
+       strike_phase = left_windows{i}(1:half);
+       lift_phase = left_windows{i}(half+1:size(left_windows{i},1));
        [~,ic_event] = min(strike_phase);
        left_IC_events = [left_IC_events,ic_event];
        [~,tc_event] = min(lift_phase);
@@ -209,13 +214,16 @@ function main()
        left_TC_events = [left_TC_events,tc_event];
        
        %%quantifying FF
-       ff_window = left_windows_flt{i}(ic_event:tc_event);
-       ff_val = sum(ff_window > -50);
+       ff_window = left_windows{i}(ic_event:tc_event);
+       ff_val = sum(ff_window > ff_thresh);
+       [~,initial_FF_win]=max(ff_window > ff_thresh);
        left_FF = [left_FF, ff_val];
+       left_init_FF = [left_init_FF,initial_FF_win];
+       left_mid_FF = [left_mid_FF,initial_FF_win+fix(ff_val/2)];
        
        %plot the detection
        subplot(6,4,i-1)
-       plot(left_windows_flt{i})
+       plot(left_windows{i})
        xline(ic_event)
        xline(tc_event)
     end
@@ -224,22 +232,30 @@ function main()
     
     %%
     
+    freq = 1/data.imu.left.time(2);
+    ff_thresh = -50;
+    
+    right_windows = cell(size(left_midswing,2)-1,1);
     
     right_IC_events = [];
     right_TC_events = [];
     right_FF = [];
+    right_init_FF = [];
+    right_mid_FF = [];
+    
+    right_gyro_filtered = applyLowpassFilter(right_foot_gyro(:,3),5,freq);
     
     %right foot
     for i = 2:1:size(right_midswing,2)
        t0 = right_midswing(i-1);
        t1 = right_midswing(i);
-       right_windows{i} = right_foot_gyro(t0:t1,3);
-       right_windows_flt{i} = applyLowpassFilter(right_windows{i},5,freq);
+       right_windows{i} = right_gyro_filtered(t0:t1);
+       %right_windows_flt{i} = applyLowpassFilter(right_windows{i},5,freq);
        
        %detecting the IC and TC
        half = ceil(size(right_windows{i},1)/2);
-       strike_phase = right_windows_flt{i}(1:half);
-       lift_phase = right_windows_flt{i}(half+1:size(right_windows{i},1));
+       strike_phase = right_windows{i}(1:half);
+       lift_phase = right_windows{i}(half+1:size(right_windows{i},1));
        [~,ic_event] = min(strike_phase);
        right_IC_events = [right_IC_events,ic_event];
        [~,tc_event] = min(lift_phase);
@@ -247,16 +263,19 @@ function main()
        right_TC_events = [right_TC_events,tc_event];
        
        %%quantifying FF
-       ff_window = right_windows_flt{i}(ic_event:tc_event);
-       ff_val = sum(ff_window > -50);
+       ff_window = right_windows{i}(ic_event:tc_event);
+       ff_val = sum(ff_window > ff_thresh);
+       [~,initial_FF_win]=max(ff_window > ff_thresh);
        right_FF = [right_FF, ff_val];
+       right_init_FF = [right_init_FF,initial_FF_win];
+       right_mid_FF = [right_mid_FF,initial_FF_win+fix(ff_val/2)];
+       
        
        %plot the detection
        subplot(6,4,i-1)
-       plot(right_windows_flt{i})
+       plot(right_windows{i})
        xline(ic_event)
        xline(tc_event)
-       right_FF = [right_FF, (tc_event - ic_event)];
     end
     
     sgtitle('Pitch gyro data (in deg/s) for midswing-to-midswing segments of right-foot')
@@ -284,20 +303,22 @@ function main()
     
     %plotting 4 cycles
     subplot(1,1,1)
-    gyro = right_foot_gyro(1:right_midswing(5),3);
+    gyro = right_gyro_filtered(1:right_midswing(5));
     
     
     plot(gyro);
-    xlim([200,2000])
+    xlim([650,3000])
     
     
     for t = 1:1:4
         xline(right_midswing(t),'--')
-        xline(right_IC_events(t)+right_midswing(t)-right_midswing(1),'-r')
-        xline(right_TC_events(t)+right_midswing(t)-right_midswing(1),'-g')
+        xline(right_IC_events(t)+right_midswing(t),'-r')
+        xline(right_TC_events(t)+right_midswing(t),'-g')
+        xline(right_midswing(t)+right_IC_events(t)+right_mid_FF(t),'-m')
     end
-    
-    xlabel('Red : IC events, Green : TC event, Black : Midswing events') 
+    legend({'Filtered Right Foot Gyro Data','Midswing events','IC events','TC events','Middle of FF phase'},'Location','northeast')
+    xlabel('time samples (sampled at 500Hz), events denoted by vertical lines') 
+    ylabel('right saggital gyro, filtered at 5Hz') 
 %% Exercice 1.A.5 (Compute Gait Cycle, Cadence, Stance Percentage)
     % compute the stance phase percentage, gait cycle time and cadence for
     % left and right leg.
@@ -358,22 +379,45 @@ function main()
     % <<< ENTER YOUR CODE HERE >>>
     
     freq = 1/data.imu.left.time(2);
-      
+    
+    close all
+    flt_d = applyLowpassFilter(right_foot_gyro(:,3),5,freq)
+    intgr = cumtrapz(flt_d)
+    plot(intgr)
+    
+     
+    
+%% Exercice 1.B.2 (Remove the Drift)
+    %Brouillon code, faudrait faire pareil mais moins moche
+
     %right foot
     for i = 2:1:size(right_midswing,2)
        t0 = right_midswing(i-1);
        t1 = right_midswing(i);
        right_windows{i} = right_foot_gyro(t0:t1,3);
        right_windows_flt{i} = applyLowpassFilter(right_windows{i},5,freq);
-       time = 1:(1/freq):(1/freq)*size(right_windows{i});
-       %intgr = trapz(right_windows_flt{i},time);
-       
+
+       intgr = cumtrapz(right_windows_flt{i});
        
        subplot(6,4,i-1)
        plot(intgr)
     end
+    %%
     
-%% Exercice 1.B.2 (Remove the Drift)
+    
+    drift_sale = [];
+    for i = 2:1:size(right_midswing,2)
+       drift_sale = [drift_sale, cumtrapz(right_windows{i}')];
+    end
+    
+    close all
+    
+    plot(drift_sale)
+    
+    %% Drift Unser Edition
+    
+    nik_les_drifts = movmean(right_foot_gyro(:,3),300);
+    plot(nik_les_drifts)
     
     % correct the drift on the pitch angle signal
     % <<< ENTER YOUR CODE HERE >>>
@@ -593,4 +637,4 @@ end %function main
 %   AML LIBRARY
 %==========================================================================
 
-% moved the functions to separate files, I thought it was cleaner this way
+% I moved the functions to separate files, I thought it was cleaner this way
