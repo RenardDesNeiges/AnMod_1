@@ -429,10 +429,11 @@ function main()
 
        intgr = cumtrapz(right_windows_flt{i});
        
-       slope = intgr(end)/size(intfilt
+       slope = intgr(end)/size(intgr,1);
+       correction = (1:1:size(intgr,1))*slope;
        %fit = polyfit(1:1:size(intgr),intgr,1);
        %mean_est = polyval(fit,1:1:size(intgr));
-       corrected = (intgr-mean_est')-(intgr(1)-mean_est(1));
+       corrected = (intgr-correction');
        
        subplot(6,4,i-1)
        plot(corrected)
@@ -441,7 +442,15 @@ function main()
     end
     %%
     subplot(1,1,1)
-    plot(corrected_right_angle(1:2000))
+    
+    plot(corrected_right_angle(500:6000))
+    xlim([0,5500])
+    title('corrected integrated foot angle using foot flat detection')
+    xlabel('time samples (sampled at 500Hz)')
+    ylabel('angle (in degrees)')
+    %%
+    subplot(1,1,1)
+    plot(corrected_right_angle())
     %%
     
     
@@ -479,27 +488,32 @@ function main()
 %% Exercice 2.A.1 (Gravity vector in the right foot IMU TF)
     % gravity vector in the right foot IMU TF
     % <<< ENTER YOUR CODE HERE >>>
-    
-    avg_static = mean(data.imu.right.accelstatic, 1);
+   
+    TFg = mean(data.imu.right.accelstatic, 1)
     
     scriptOutResults.imu.rightGravityTF = avg_static; % insert right foot TFg here
     
 %% Exercice 2.A.2 (Gravity vector in the AF)
     % Express the gravity vector in the anatomical frame
     % <<< No CODE >>>
-        
+    Y_AF = [0,-1,0]
+            
 %% Exercice 2.A.3 (Extract the rotation matrix between TFg and Y_AF )
     % find R_TFg_Y_AF between TFg and Y_AF
     % <<< ENTER YOUR CODE HERE >>>
-    Y_AF = data.imu.right.accelstatic(:,2);
+    %Y_AF = data.imu.right.accelstatic(:,2);
+    
+    R_TFg_Y_AF = get3DRotationMatrixA2B(TFg,Y_AF)
    
-    %scriptOutResults.imu.rightRotationYAF = R_TFg_Y_AF = get3DRotationMatrixA2B(scriptOutResults.imu.rightGravityTF, Y_AF);; % insert R_TFg_Y_AF
         
 %% Exercice 2.A.4 (Plot gravity before and after rotation) 
     % plot the static signals before and after the rotation
     % <<< ENTER YOUR CODE HERE >>>
+    %rotate the acceleration signal
+    for i = 1:1:size(
+    %%
     subplot(2,1,1)
-    plot(Y_AF,'-r', 'DisplayName','Before rotation')
+    plot(data.imu.right.accelstatic(:,2),'-r', 'DisplayName','Before rotation')
     
     subplot(2,1,2)
     plot(scriptOutResults.imu.rightRotationYAF,'-b', 'DisplayName', 'After rotation')

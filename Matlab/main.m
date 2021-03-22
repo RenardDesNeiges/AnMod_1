@@ -488,30 +488,38 @@ function main()
 %% Exercice 2.A.1 (Gravity vector in the right foot IMU TF)
     % gravity vector in the right foot IMU TF
     % <<< ENTER YOUR CODE HERE >>>
-    
-    avg_static = mean(data.imu.right.accelstatic, 1);
+   
+    TFg = mean(data.imu.right.accelstatic, 1)
     
     scriptOutResults.imu.rightGravityTF = avg_static; % insert right foot TFg here
     
 %% Exercice 2.A.2 (Gravity vector in the AF)
     % Express the gravity vector in the anatomical frame
     % <<< No CODE >>>
-        
+    Y_AF = [0,-1,0]
+            
 %% Exercice 2.A.3 (Extract the rotation matrix between TFg and Y_AF )
     % find R_TFg_Y_AF between TFg and Y_AF
     % <<< ENTER YOUR CODE HERE >>>
-    Y_AF = data.imu.right.accelstatic(:,2);
+    %Y_AF = data.imu.right.accelstatic(:,2);
+    
+    R_TFg_Y_AF = get3DRotationMatrixA2B(Y_AF,TFg)
    
-    %scriptOutResults.imu.rightRotationYAF = R_TFg_Y_AF = get3DRotationMatrixA2B(scriptOutResults.imu.rightGravityTF, Y_AF);; % insert R_TFg_Y_AF
         
 %% Exercice 2.A.4 (Plot gravity before and after rotation) 
     % plot the static signals before and after the rotation
     % <<< ENTER YOUR CODE HERE >>>
+    %rotate the acceleration signal
+    right_AF_accelstatic = zeros(size(data.imu.right.accelstatic));
+    for i = 1:1:size(data.imu.right.accelstatic,1)
+       right_AF_accelstatic(i,:) = data.imu.right.accelstatic(i,:) * R_TFg_Y_AF;
+    end
+    %%
     subplot(2,1,1)
-    plot(Y_AF,'-r', 'DisplayName','Before rotation')
+    plot(data.imu.right.accelstatic,'-r', 'DisplayName','Before rotation')
     
     subplot(2,1,2)
-    plot(scriptOutResults.imu.rightRotationYAF,'-b', 'DisplayName', 'After rotation')
+    plot(right_AF_accelstatic,'-b', 'DisplayName', 'After rotation')
     
     set(gcf,'color','w');
     
