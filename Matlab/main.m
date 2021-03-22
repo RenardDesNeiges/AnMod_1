@@ -470,18 +470,24 @@ function main()
     % label the direction of walking and vertical component in the plot
     % <<< ENTER YOUR CODE HERE >>>
     
+    freq = data.motioncameras.static.fs;
+   
+    Z = applyLowpassFilter(data.motioncameras.static.leftCenterFoot(:,1), 10, freq);
+    X = applyLowpassFilter(data.motioncameras.static.leftCenterFoot(:,2), 10, freq);
+    Y = applyLowpassFilter(data.motioncameras.static.leftCenterFoot(:,3), 10, freq);
+    
     subplot(3,1,1)
-    plot(data.motioncameras.static.leftCenterFoot(:,1), 'LineWidth',1);
+    plot(Z, 'LineWidth',1);
     title('Z axis') % acceleration is approximately constant, amplitude 0.2
     xlim([0,1000])
     
     subplot(3,1,2)
-    plot(data.motioncameras.static.leftCenterFoot(:,2), 'LineWidth',1);
+    plot(X, 'LineWidth',1);
     title('X axis') % cycles, with amplitude 0.5
     xlim([0,1000])
     
     subplot(3,1,3)
-    plot(data.motioncameras.static.leftCenterFoot(:,3), 'LineWidth',1);
+    plot(Y, 'LineWidth',1);
     title('Y axis') % varies in a similar manner as above, amplitude 0.4
     xlim([0,1000])
         
@@ -574,15 +580,25 @@ function main()
     
     F_rear_right = (data.insole.right.pressure(:, 1:33)).*(data.insole.right.area(:, 1:33));
     F_fore_right = (data.insole.right.pressure(:, 55:99)).*(data.insole.right.area(:, 55:99));
+    
+    freq = data.insole.fs;
+    
+    filtered_F_rear_right = applyLowpassFilter(F_rear_right,5,freq);
+    filtered_F_fore_right = applyLowpassFilter(F_fore_right,5,freq);
+    
+    mean_F_rear_right = sum(filtered_F_rear_right, 2);
+    mean_F_fore_right = sum(filtered_F_fore_right, 2);
        
     % detect the sample index of the multiple IC, TS, HO, TO
     % <<< ENTER YOUR CODE HERE >>>
+    weight = 70.0;
+    threshold = 0.05 * weight;
     
     % store IC, TS, HO and TO detection index
-    scriptOutResults.insole.rightIC = []; % insert the index of the right foot IC events
-    scriptOutResults.insole.rightTS = []; % insert the index of the right foot TS events
-    scriptOutResults.insole.rightHO = []; % insert the index of the right foot HO events
-    scriptOutResults.insole.rightTO = []; % insert the index of the right foot TO events
+    scriptOutResults.insole.rightHS = find(mean_F_rear_right > threshold); % insert the index of the right foot IC events
+    scriptOutResults.insole.rightTS = find(mean_F_fore_right > threshold); % insert the index of the right foot TS events
+    scriptOutResults.insole.rightHO = find(mean_F_rear_right < threshold); % insert the index of the right foot HO events
+    scriptOutResults.insole.rightTO = find(mean_F_fore_right < threshold); % insert the index of the right foot TO events
    
 %% Exercice 3.A.2 (Plot F-rear and F_forefoot)
     % plot a graph showing F_rear and F_Fore at least two
@@ -590,6 +606,31 @@ function main()
     % correctly detected and show these event in your plot. Do not forget 
     % to add labels on each axis and a legend for all signals. 
     % <<< ENTER YOUR CODE HERE >>>
+    
+    x_rear = 1:1:size(mean_F_rear_right,1);
+    x_fore = 1:1:size(mean_F_fore_right,1);
+    
+    subplot(2,1,1)
+    plot(mean_F_rear_right(1:400), 'black')
+    ylabel('Force [kPa / mm^2)]')
+    title('Rear Force right')
+    hold on
+    plot(x_rear(scriptOutResults.insole.rightHS), mean_F_rear_right(scriptOutResults.insole.rightHS), '-b', 'DisplayName', 'Heel-Strike')
+    plot(x_rear(scriptOutResults.insole.rightHO), mean_F_rear_right(scriptOutResults.insole.rightHO), '-r', 'DisplayName', 'Heel-Off')
+    xlim([1 400])
+    legend()
+    hold off
+    
+    subplot(2,1,2)
+    plot(mean_F_fore_right(1:400), 'black')
+    ylabel('Force [kPa / mm^2]')
+    title('Fore Force right')
+    hold on
+    plot(x_fore(scriptOutResults.insole.rightTS), mean_F_fore_right(scriptOutResults.insole.rightTS), '-b', 'DisplayName', 'Toe-Strike')
+    plot(x_fore(scriptOutResults.insole.rightTO), mean_F_fore_right(scriptOutResults.insole.rightTO), '-r', 'DisplayName', 'Toe-Off')
+    xlim([1 400])
+    legend()
+    hold off
         
 %% Exercice 3.A.3 (estimate the foot-flat duration)
     % for the two cycles above, estimate the foot-flat duration
@@ -599,6 +640,16 @@ function main()
     % estimate the total vertical force signal recorded by the insole 
     % during one foot-flat period.
     % <<< ENTER YOUR CODE HERE >>>
+    
+    id_HO = scriptOutResults.insole.rightHO(1);
+    id_TS = scriptOutResults.insole.rightTS(1);
+    
+    force_cycle = data.insole.right.pressure(id_HO:id_TS,:).*data.insole.right.area(id_HO:id_TS,:);
+    
+    freq = data.insole.right.fs;
+    filtered_force_cycle = applyLowpassFilter(force_cycle,5,freq);
+    
+    total_force = sum(filtered_force_cycle, 2)
 
 %% Exercice 3.B.2 (free body diagram)
     % <<< No CODE  >>>
