@@ -336,9 +336,7 @@ function main()
        left_gait_times = [left_gait_times, (1/freq)*(right_midswing(i)-right_midswing(i-1))];
     end
     
-    
-    
-    
+
     scriptOutResults.imu.leftMeanGaitCycleTime = [mean(left_gait_times)]; % insert the mean gait cycle time of the left foot
     scriptOutResults.imu.leftSTDGaitCycleTime = [std(left_gait_times)]; % insert the gait cycle time STD of the left foot
     scriptOutResults.imu.rightMeanGaitCycleTime = [mean(right_gait_times)]; % insert the mean gait cycle time of the right foot
