@@ -583,7 +583,7 @@ function main()
     
     Xtf = (left_lateral_m - left_center_m)/norm(left_lateral_m - left_center_m,2)
     center_medial = (left_medial_m - left_center_m)/norm(left_medial_m - left_center_m,2);
-    Ytf = cross(center_medial,Xtf)/norm(cross(Xtf,Ytf),2)
+    Ytf = cross(center_medial,Xtf)/norm(cross(center_medial,Xtf),2)
     Ztf = cross(Xtf,Ytf)/norm(cross(Xtf,Ytf),2)
     
     scriptOutResults.motioncameras.tfX = Xtf; % insert TF x-axis
@@ -597,73 +597,157 @@ function main()
     R2 = get3DRotationMatrixA2B([0,1,0],Ytf*R1);
     R3 = get3DRotationMatrixA2B([0,0,1],Ztf*R1*R2);
 
-    TF_to_GF = R1 * R2 * R3;
+    TF_to_GF = inv(R1 * R2 * R3);
     
     scriptOutResults.motioncameras.R_TF_GF = TF_to_GF; % insert R_TF_GF
     
-    %verification : 
-    Xgf_check = Xtf * R
-    Ygf_check = Ytf * R
-    Zgf_check = Ztf * R
+    %verification :     
+    Xgf_check = Xtf * inv(TF_to_GF)
+    Ygf_check = Ytf * inv(TF_to_GF)
+    Zgf_check = Ztf * inv(TF_to_GF)
         
 %% Exercice 2.B.4 (Construct the anatomical frame of the left foot)
     % construct the anatomical frame of the left foot
     % <<< ENTER YOUR CODE HERE >>>
-    data.motioncameras.static.leftMedialMalleolus;
+    left_medial = mean(data.motioncameras.static.leftMedialMalleolus,1);
+    left_lateral = mean(data.motioncameras.static.leftLateralMalleolus,1);
     
-    scriptOutResults.motioncameras.afX = []; % insert AF x-axis
-    scriptOutResults.motioncameras.afY = []; % insert AF y-axis
-    scriptOutResults.motioncameras.afZ = []; % insert AF z-axis
-        
+    afZ = (left_medial - left_lateral);
+    % here we have a problem : the afZ vector constructed by the markers
+    % is not in the plane (it has a non-zero y component) so let's just
+    % set it to 0 by hand so that our frame forms a base as expected
+    afZ(2) = 0;
+    afZ = afZ/norm(afZ,2);
+    afY = [0, 1, 0];
+    afX = cross(afZ,afY);
+    
+    
+    scriptOutResults.motioncameras.afX = afX; % insert AF x-axis
+    scriptOutResults.motioncameras.afY = afY; % insert AF y-axis
+    scriptOutResults.motioncameras.afZ = afZ; % insert AF z-axis
+    
 %% Exercice 2.B.5 (Orthogonality)
     % Check the orthogonality of the defined coordinate system
     % <<< ENTER YOUR CODE HERE >>>
     
     % If orthogonal, <TF_i, TF_j> = 0 for i ? j
-    if (scriptOutResults.motioncameras.afX * scriptOutResults.motioncameras.afY == 0 || ...
-        scriptOutResults.motioncameras.afX * scriptOutResults.motioncameras.afZ == 0 || ...
-        scriptOutResults.motioncameras.afY * scriptOutResults.motioncameras.afZ == 0) 
-        
-        disp('Careful : The vector basis for TF is not orthogonal')
+    if ((dot(afX,afY)+dot(afX,afZ)+dot(afY,afZ)) ~= 0)
+       disp("not orthogonal") 
     end
 
 %% Exercice 2.B.6 (Compute the rotation matrix between AF and GF)
     % compute R_AF_GF
     % <<< ENTER YOUR CODE HERE >>>
     
-    AF = [scriptOutResults.motioncameras.afX; 
-          scriptOutResults.motioncameras.afY; 
-          scriptOutResults.motioncameras.afZ];
-      
-    GF = [1, 0, 0;
-          0, 1, 0;
-          0, 0, 1]; % Tout simplement ?
+    R1 = get3DRotationMatrixA2B([1,0,0],afX);   % we only need one rotation 
+                                                % since Y axes are aligned
+                                                % already
+    AF_to_GF = inv(R1*[1,0,0;0,1,0;0,0,-1]);
     
-    scriptOutResults.motioncameras.R_AF_GF = get3DRotationMatrixA2B(AF,GF); % insert R_AF_GF
+    scriptOutResults.motioncameras.R_AF_GF = AF_to_GF; % insert R_AF_GF
       
+    Xgf_check = afX * inv(AF_to_GF)
+    Ygf_check = afY * inv(AF_to_GF)
+    Zgf_check = afZ * inv(AF_to_GF)
+        
 %% Exercice 2.B.7 (Compute the rotation matrix between TF and AF)
     % compute R_TF_AF
     % <<< ENTER YOUR CODE HERE >>>
     
-    scriptOutResults.motioncameras.R_TF_AF = get3DRotationMatrixA2B(TF, AF); % insert R_TF_AF
+    R1 = get3DRotationMatrixA2B(afX,Xtf);
+    R2 = get3DRotationMatrixA2B(afY,Ytf*R1);
+    R3 = get3DRotationMatrixA2B(afZ,Ztf*R1*R2);
+
+    TF_to_AF = inv(R1 * R2 * R3)
+    
+    scriptOutResults.motioncameras.R_TF_AF = TF_to_AF; % insert R_TF_AF
        
 %% Exercice 2.C.1 (compute TF for walking)
     % (1) compute TF for walking
     % <<< ENTER YOUR CODE HERE >>>
-    center_TF = mean(data.motioncamerasa.walking.leftCenterFoot, 1);
-    Lateral_TF = mean(data.motioncamerasa.walking.leftLateralFoot, 1);
-    medial_TF = mean(data.motioncamerasa.walking.leftMedialFoot, 1);
+    center_data = data.motioncameras.walking.leftCenterFoot;
+    Lateral_data = data.motioncameras.walking.leftLateralFoot;
+    medial_data = data.motioncameras.walking.leftMedialFoot;
     
-    GF = [center_TF(2), lateral_TF(2), medial_TF(2); 
-          center_TF(3), lateral_TF(3), medial_TF(3);
-          center_TF(1), lateral_TF(1), medial_TF(1)];
-      
-    TF = inv(scriptOutResults.motioncameras.R_TF_GF) * GF;
+    % COMMENTS 
     
+    Xtf_data = (Lateral_data - center_data)./vecnorm(Lateral_data - center_data,2,2);
+    medial_data = (medial_data - center_data)./vecnorm(medial_data - center_data,2,2);
+    Ytf_data = cross(medial_data,Xtf_data)./vecnorm(cross(medial_data,Xtf_data),2,2);
+    Ztf_data = cross(Xtf_data,medial_data)./vecnorm(cross(Xtf_data,medial_data),2,2);
+    
+    subplot(3,1,1)
+    plot(Xtf_data)
+    xlim([1,2500])
+    subplot(3,1,2)
+    plot(Ytf_data)
+    xlim([1,2500])
+    subplot(3,1,3)
+    plot(Ztf_data)
+    xlim([1,2500])
+    
+   
 %% Exercice 2.C.2 (compute AF for walking)
     % (2) compute AF for walking
     % <<< ENTER YOUR CODE HERE >>>
-    AF = inv(scriptOutResults.motioncameras.R_TF_GF) * GF;
+    
+    Xaf_data =  zeros(size(Xtf_data));
+    Yaf_data =  zeros(size(Ytf_data));
+    Zaf_data =  zeros(size(Ztf_data));
+    
+    
+    for i = 1:1:size(Xtf_data,1)
+        xt = Xtf_data(i,:);
+        yt = Ytf_data(i,:);
+        zt = Ztf_data(i,:);
+        
+        xa = xt * TF_to_AF;
+        ya = yt * TF_to_AF;
+        za = zt * TF_to_AF;
+        
+        Xaf_data(i,:) = xa;
+        Yaf_data(i,:) = ya;
+        Zaf_data(i,:) = za;
+    end
+    
+    
+    subplot(3,1,1)
+    plot(Xaf_data)
+    xlim([1,2500])
+    subplot(3,1,2)
+    plot(Yaf_data)
+    xlim([1,2500])
+    subplot(3,1,3)
+    plot(Zaf_data)
+    xlim([1,2500])
+    
+    %% AF DATA VS TF DATA
+    
+    subplot(3,2,1)
+    plot(Xtf_data)
+    title('xtf')
+    xlim([1,500])
+    subplot(3,2,3)
+    plot(Ytf_data)
+    title('ytf')
+    xlim([1,500])
+    subplot(3,2,5)
+    plot(Ztf_data)
+    title('ztf')
+    xlim([1,500])
+    
+    subplot(3,2,2)
+    plot(Xaf_data)
+    title('xaf')
+    xlim([1,500])
+    subplot(3,2,4)
+    plot(Yaf_data)
+    title('yaf')
+    xlim([1,500])
+    subplot(3,2,6)
+    plot(Zaf_data)
+    title('zaf')
+    xlim([1,500])
     
 %% Exercice 2.C.3 (compute the pitch angle)    
     % (3) compute the pitch angle
