@@ -572,7 +572,9 @@ function main()
           scriptOutResults.motioncameras.tfY; 
           scriptOutResults.motioncameras.tfZ];
       
-    GF = []; % � d�finir
+    GF = [1, 0, 0;
+          0, 1, 0;
+          0, 0, 1]; % Tout simplement ?
     
     scriptOutResults.motioncameras.R_TF_GF = get3DRotationMatrixA2B(TF,GF); % insert R_TF_GF
         
@@ -605,11 +607,11 @@ function main()
           scriptOutResults.motioncameras.afY; 
           scriptOutResults.motioncameras.afZ];
       
-    GF = []; % � d�finir
+    GF = [1, 0, 0;
+          0, 1, 0;
+          0, 0, 1]; % Tout simplement ?
     
     scriptOutResults.motioncameras.R_AF_GF = get3DRotationMatrixA2B(AF,GF); % insert R_AF_GF
-    
-    scriptOutResults.motioncameras.R_AF_GF = []; % insert R_AF_GF
       
 %% Exercice 2.B.7 (Compute the rotation matrix between TF and AF)
     % compute R_TF_AF
@@ -620,18 +622,38 @@ function main()
 %% Exercice 2.C.1 (compute TF for walking)
     % (1) compute TF for walking
     % <<< ENTER YOUR CODE HERE >>>
+    center_TF = mean(data.motioncamerasa.walking.leftCenterFoot, 1);
+    Lateral_TF = mean(data.motioncamerasa.walking.leftLateralFoot, 1);
+    medial_TF = mean(data.motioncamerasa.walking.leftMedialFoot, 1);
+    
+    GF = [center_TF(2), lateral_TF(2), medial_TF(2); 
+          center_TF(3), lateral_TF(3), medial_TF(3);
+          center_TF(1), lateral_TF(1), medial_TF(1)];
+      
+    TF = inv(scriptOutResults.motioncameras.R_TF_GF) * GF;
     
 %% Exercice 2.C.2 (compute AF for walking)
     % (2) compute AF for walking
     % <<< ENTER YOUR CODE HERE >>>
+    AF = inv(scriptOutResults.motioncameras.R_TF_GF) * GF;
     
 %% Exercice 2.C.3 (compute the pitch angle)    
     % (3) compute the pitch angle
     % <<< ENTER YOUR CODE HERE >>>
+    y = [0, 1, 0]; % Vector orthogonal to the Z0-X0 plane (y-axis).
+    n = []; % à définir
+    
+    alpha = asin(abs(y * n)/abs(y)*abs(n));
  
 %% Exercice 2.C.4 (Plot pitch angle and show swing, stance phase, flat foot periods)    
     % (3) compute the pitch angle
     % <<< ENTER YOUR CODE HERE >>>
+    alpha_filtered = applyLowpassFilter(alpha, 5, freq); % définir mieux le threshold
+    
+    plot(t, alpha_filtered, '-b')
+    xlabel('time [s]')
+    ylabel('Pitch Angle [rad]')
+    legend()
           
 %%  ------------- (3) ASSIGNEMENT 3: KINETIC ANALYSIS -----------------   
 
@@ -714,6 +736,7 @@ function main()
 
 %% Exercice 3.B.2 (free body diagram)
     % <<< No CODE  >>>
+    FF_time = mean(data.insole.time(scriptOutResults.insole.rightHO) - data.insole.time(scriptOutResults.insole.rightTS));
 
 %% Exercice 3.B.3 (mean value of ankle net force and moment during foot flat )
     % compute the net force at the ankle (F_A) and the net moment at the
