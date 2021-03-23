@@ -701,9 +701,9 @@ function main()
         yt = Ytf_data(i,:);
         zt = Ztf_data(i,:);
         
-        xa = xt * TF_to_AF;
-        ya = yt * TF_to_AF;
-        za = zt * TF_to_AF;
+        xa = xt * inv(TF_to_AF);
+        ya = yt * inv(TF_to_AF);
+        za = zt * inv(TF_to_AF);
         
         Xaf_data(i,:) = xa;
         Yaf_data(i,:) = ya;
@@ -726,46 +726,68 @@ function main()
     subplot(3,2,1)
     plot(Xtf_data)
     title('xtf')
+    legend({'X', 'Y', 'Z'},'Location','northwest')
     xlim([1,500])
     subplot(3,2,3)
     plot(Ytf_data)
     title('ytf')
+    legend({'X', 'Y', 'Z'},'Location','northwest')
     xlim([1,500])
     subplot(3,2,5)
     plot(Ztf_data)
     title('ztf')
+    legend({'X', 'Y', 'Z'},'Location','northwest')
     xlim([1,500])
     
     subplot(3,2,2)
     plot(Xaf_data)
     title('xaf')
+    legend({'X', 'Y', 'Z'},'Location','northwest')
     xlim([1,500])
     subplot(3,2,4)
     plot(Yaf_data)
     title('yaf')
+    legend({'X', 'Y', 'Z'},'Location','northwest')
     xlim([1,500])
     subplot(3,2,6)
     plot(Zaf_data)
     title('zaf')
+    legend({'X', 'Y', 'Z'},'Location','northwest')
     xlim([1,500])
     
 %% Exercice 2.C.3 (compute the pitch angle)    
     % (3) compute the pitch angle
     % <<< ENTER YOUR CODE HERE >>>
-    y = [0, 1, 0]; % Vector orthogonal to the Z0-X0 plane (y-axis).
-    n = []; % à définir
+    % BIG CHUNGUS COMPUTATION
+    n = [0, 1, 0]; % Vector orthogonal to the Z0-X0 plane (y-axis).
     
-    alpha = asin(abs(y * n)/abs(y)*abs(n));
+    alpha = zeros(size(Yaf_data,1),1);
+    
+    for i = 1:1:size(Yaf_data,1)
+        
+        alpha(i) =  asin(norm(cross(Yaf_data(i,:),n),2) / ...
+            (norm(Yaf_data(i,:),2) * norm(n,2)));
+    end
+    
+    %alpha = asin(abs(y * n)/abs(y)*abs(n));
  
 %% Exercice 2.C.4 (Plot pitch angle and show swing, stance phase, flat foot periods)    
     % (3) compute the pitch angle
     % <<< ENTER YOUR CODE HERE >>>
     alpha_filtered = applyLowpassFilter(alpha, 5, freq); % définir mieux le threshold
     
-    plot(t, alpha_filtered, '-b')
-    xlabel('time [s]')
-    ylabel('Pitch Angle [rad]')
-    legend()
+    subplot(2,1,1)
+    plot(alpha_filtered)
+    start = 100 ;
+    xlim([start,start+100])
+    subplot(2,1,2)
+    plot(intgr)
+    xlim([100,600])
+    
+    %plot(t, alpha_filtered, '-b')
+    %xlabel('time [s]')
+    %ylabel('Pitch Angle [rad]')
+    %legend()
           
 %%  ------------- (3) ASSIGNEMENT 3: KINETIC ANALYSIS -----------------   
 
