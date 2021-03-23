@@ -533,24 +533,24 @@ function main()
     
     freq = data.motioncameras.static.fs;
    
-    Z = applyLowpassFilter(data.motioncameras.static.leftCenterFoot(:,1), 10, freq);
-    X = applyLowpassFilter(data.motioncameras.static.leftCenterFoot(:,2), 10, freq);
-    Y = applyLowpassFilter(data.motioncameras.static.leftCenterFoot(:,3), 10, freq);
+    Z = applyLowpassFilter(data.motioncameras.walking.leftCenterFoot(:,1), 10, freq);
+    X = applyLowpassFilter(data.motioncameras.walking.leftCenterFoot(:,2), 10, freq);
+    Y = applyLowpassFilter(data.motioncameras.walking.leftCenterFoot(:,3), 10, freq);
     
     subplot(3,1,1)
     plot(Z, 'LineWidth',1);
     title('Z axis') % acceleration is approximately constant, amplitude 0.2
-    xlim([0,1000])
+    xlim([0,3000])
     
     subplot(3,1,2)
     plot(X, 'LineWidth',1);
     title('X axis') % cycles, with amplitude 0.5
-    xlim([0,1000])
+    xlim([0,3000])
     
     subplot(3,1,3)
     plot(Y, 'LineWidth',1);
     title('Y axis') % varies in a similar manner as above, amplitude 0.4
-    xlim([0,1000])
+    xlim([0,3000])
         
 %% Exercice 2.B.2 (Construct the technical frame of the left foot)
     % construct the technical frame of the left foot
