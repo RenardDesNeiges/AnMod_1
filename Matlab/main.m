@@ -491,7 +491,7 @@ function main()
    
     TFg = mean(data.imu.right.accelstatic, 1)
     
-    scriptOutResults.imu.rightGravityTF = avg_static; % insert right foot TFg here
+    scriptOutResults.imu.rightGravityTF = TFg; % insert right foot TFg here
     
 %% Exercice 2.A.2 (Gravity vector in the AF)
     % Express the gravity vector in the anatomical frame
@@ -516,11 +516,19 @@ function main()
     end
     %%
     subplot(2,1,1)
-    plot(data.imu.right.accelstatic,'-r', 'DisplayName','Before rotation')
+    plot(data.imu.right.accelstatic,'-', 'DisplayName','Before rotation')
+    legend({'X', 'Y', 'Z'},'Location','northwest')
+    title('static accelerometer measurements in TF')
+    xlabel('time samples (sampled at 500Hz)')
+    ylabel('measured values (in g)')
     
     subplot(2,1,2)
-    plot(right_AF_accelstatic,'-b', 'DisplayName', 'After rotation')
-    
+    plot(right_AF_accelstatic,'-', 'DisplayName', 'After rotation')
+    legend({'X', 'Y', 'Z'},'Location','northwest')
+    title('static accelerometer measurements in AF')
+    xlabel('time samples (sampled at 500Hz)')
+    ylabel('measured values (in g)')
+    sgtitle('Pitch gyro data (in deg/s) for midswing-to-midswing segments of right-foot')
     set(gcf,'color','w');
     
 %% Exercice 2.A.5 (Describe a method for alignment in the transvers plane) 
@@ -534,8 +542,8 @@ function main()
     freq = data.motioncameras.static.fs;
    
     Z = applyLowpassFilter(data.motioncameras.walking.leftCenterFoot(:,1), 10, freq);
-    X = applyLowpassFilter(data.motioncameras.walking.leftCenterFoot(:,2), 10, freq);
-    Y = applyLowpassFilter(data.motioncameras.walking.leftCenterFoot(:,3), 10, freq);
+    Y = applyLowpassFilter(data.motioncameras.walking.leftCenterFoot(:,2), 10, freq);
+    X = applyLowpassFilter(data.motioncameras.walking.leftCenterFoot(:,3), 10, freq);
     
     subplot(3,1,1)
     plot(Z, 'LineWidth',1);
@@ -551,32 +559,52 @@ function main()
     plot(Y, 'LineWidth',1);
     title('Y axis') % varies in a similar manner as above, amplitude 0.4
     xlim([0,3000])
+    
+    set(gcf,'color','w');
+    
+    sgtitle('Components of the leftCenterFoot marker over time')
         
 %% Exercice 2.B.2 (Construct the technical frame of the left foot)
     % construct the technical frame of the left foot
     % <<< ENTER YOUR CODE HERE >>>
     
-    center_m = mean(data.motioncameras.static.leftCenterFoot, 1);
-    lateral_m = mean(data.motioncameras.static.leftLateralFoot, 1);
-    medial_m = mean(data.motioncameras.static.leftMedialFoot, 1);
+    % COMMENTS FOR THE CORRECTION
+    % we observe that the marker placement doesn't contstruct orthonormal
+    % vectors, because we want to form a basis, we assume that the markers
+    % are actually in a plane perpendicular to Y_AF (meaning we can infer 
+    % the direction of Y_TF with a cross product) and choose arbitrarly 
+    % that X_TF is the direction given by tracing a line from marker 1 
+    % to marker 2 Z_TF is then computed as a cross product between X_TF 
+    % and Y_TF
     
-    scriptOutResults.motioncameras.tfX = [center_m(2), lateral_m(2), medial_m(2)]; % insert TF x-axis
-    scriptOutResults.motioncameras.tfY = [center_m(3), lateral_m(3), medial_m(3)]; % insert TF y-axis
-    scriptOutResults.motioncameras.tfZ = [center_m(1), lateral_m(1), medial_m(1)]; % insert TF z-axis
-
+    left_center_m = mean(data.motioncameras.static.leftCenterFoot, 1);
+    left_lateral_m = mean(data.motioncameras.static.leftLateralFoot, 1);
+    left_medial_m = mean(data.motioncameras.static.leftMedialFoot, 1);
+    
+    Xtf = (left_lateral_m - left_center_m)/norm(left_lateral_m - left_center_m,2)
+    center_medial = (left_medial_m - left_center_m)/norm(left_medial_m - left_center_m,2);
+    Ytf = cross(center_medial,Xtf)/norm(cross(Xtf,Ytf),2)
+    Ztf = cross(Xtf,Ytf)/norm(cross(Xtf,Ytf),2)
+    
+    scriptOutResults.motioncameras.tfX = Xtf; % insert TF x-axis
+    scriptOutResults.motioncameras.tfY = Ytf; % insert TF y-axis
+    scriptOutResults.motioncameras.tfZ = Ztf; % insert TF z-axis
         
 %% Exercice 2.B.3 (Compute the rotation matrix)
     % compute R_TF_GF
-    % <<< ENTER YOUR CODE HERE >>>
-    TF = [scriptOutResults.motioncameras.tfX; 
-          scriptOutResults.motioncameras.tfY; 
-          scriptOutResults.motioncameras.tfZ];
-      
-    GF = [1, 0, 0;
-          0, 1, 0;
-          0, 0, 1]; % Tout simplement ?
     
-    scriptOutResults.motioncameras.R_TF_GF = get3DRotationMatrixA2B(TF,GF); % insert R_TF_GF
+    R1 = get3DRotationMatrixA2B([1,0,0],Xtf);
+    R2 = get3DRotationMatrixA2B([0,1,0],Ytf*R1);
+    R3 = get3DRotationMatrixA2B([0,0,1],Ztf*R1*R2);
+
+    TF_to_GF = R1 * R2 * R3;
+    
+    scriptOutResults.motioncameras.R_TF_GF = TF_to_GF; % insert R_TF_GF
+    
+    %verification : 
+    Xgf_check = Xtf * R
+    Ygf_check = Ytf * R
+    Zgf_check = Ztf * R
         
 %% Exercice 2.B.4 (Construct the anatomical frame of the left foot)
     % construct the anatomical frame of the left foot
