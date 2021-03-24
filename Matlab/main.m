@@ -816,11 +816,41 @@ function main()
     weight = 70.0;
     threshold = 0.05 * weight;
     
+    % Heel detection:
+    id_sup_rear = find(mean_F_rear_right >= threshold);
+    id_inf_rear = find(mean_F_rear_right <= threshold);
+    id_inf_rear = [0; id_inf_rear];
+
+    id_sup = id_sup_rear * ones(1, length(id_inf_rear));
+    id_inf = id_inf_rear * ones(1, length(id_sup_rear));
+    
+    id_sup_inf = id_sup - id_inf';
+    [i_rear, ~] = find(id_sup_inf == 1);
+    [~, j_rear_1] = find(id_sup_inf == -1);
+    
+    t_HS = id_sup_rear(i_rear);
+    t_HO = id_inf_rear(j_rear_1); 
+    
+    % Toe detection:
+    id_sup_fore = find(mean_F_fore_right >= threshold);
+    id_inf_fore = find(mean_F_fore_right <= threshold);
+    id_inf_fore = [0; id_inf_fore];
+
+    id_sup_f = id_sup_fore * ones(1, length(id_inf_fore));
+    id_inf_f = id_inf_fore * ones(1, length(id_sup_fore));
+    
+    id_sup_inf_f = id_sup_f - id_inf_f';
+    [i_fore, ~] = find(id_sup_inf_f == 1);
+    [~, j_fore_1] = find(id_sup_inf_f == -1);
+    
+    t_TS = id_sup_fore(i_fore);
+    t_TO = id_inf_fore(j_fore_1); 
+    
     % store IC, TS, HO and TO detection index
-    scriptOutResults.insole.rightHS = find(mean_F_rear_right > threshold); % insert the index of the right foot IC events
-    scriptOutResults.insole.rightTS = find(mean_F_fore_right > threshold); % insert the index of the right foot TS events
-    scriptOutResults.insole.rightHO = find(mean_F_rear_right < threshold); % insert the index of the right foot HO events
-    scriptOutResults.insole.rightTO = find(mean_F_fore_right < threshold); % insert the index of the right foot TO events
+    scriptOutResults.insole.rightHS = t_HS; % insert the index of the right foot IC events
+    scriptOutResults.insole.rightTS = t_TS; % insert the index of the right foot TS events
+    scriptOutResults.insole.rightHO = t_HO; % insert the index of the right foot HO events
+    scriptOutResults.insole.rightTO = t_TO; % insert the index of the right foot TO events
    
 %% Exercice 3.A.2 (Plot F-rear and F_forefoot)
     % plot a graph showing F_rear and F_Fore at least two
@@ -831,35 +861,25 @@ function main()
     
     x_rear = 1:1:size(mean_F_rear_right,1);
     x_fore = 1:1:size(mean_F_fore_right,1);
-   
-    t_HO = [find(mean_F_rear_right(100:140) == min(mean_F_rear_right(100:140)))+100, find(mean_F_rear_right(200:240) == min(mean_F_rear_right(200:240)))+200];
-    t_HS = [find(mean_F_rear_right(50:150) == min(mean_F_rear_right(50:150)))+50, find(mean_F_rear_right(150:250) == min(mean_F_rear_right(150:250)))+150];
-    
-    t_TS = [find(mean_F_fore_right(50:100) == min(mean_F_fore_right(50:150)))+50, find(mean_F_fore_right(170:210) == min(mean_F_fore_right(170:210)))+170];
-    t_TO = [find(mean_F_fore_right(100:200) == min(mean_F_fore_right(100:200)))+100, find(mean_F_fore_right(250:300) == min(mean_F_fore_right(250:300)))+250];
     
     subplot(2,1,1)
-    plot(mean_F_rear_right(1:400), 'black')
-    ylabel('Force [kPa / mm^2)]')
+    plot(mean_F_rear_right, 'black')
+    ylabel('Force [kPa * mm^2)]')
     title('Rear Force right')
     hold on
-    plot(x_rear(scriptOutResults.insole.rightHS), mean_F_rear_right(scriptOutResults.insole.rightHS), '-b', 'DisplayName', 'Heel-Strike')
-    xline(t_HO, '--r', 'DisplayName', 'Heel-Off')
-    xline(t_HS, '--b', 'DisplayName', 'Heel-Strike')
-    xlim([50 300])
-    legend()
+    xline(t_HO, '--r', 'Heel-Off')
+    xline(t_HS, '--b', 'Heel-Strike')
+    xlim([150 400])
     hold off
     
     subplot(2,1,2)
-    plot(mean_F_fore_right(1:400), 'black')
-    ylabel('Force [kPa / mm^2]')
+    plot(mean_F_fore_right, 'black')
+    ylabel('Force [kPa * mm^2]')
     title('Fore Force right')
     hold on
-    plot(x_fore(scriptOutResults.insole.rightTS), mean_F_fore_right(scriptOutResults.insole.rightTS), '-b', 'DisplayName', 'Toe-Strike')
-    xline(t_TO, '--r', 'DisplayName', 'Toe-Off')
-    xline(t_TS, '--b', 'DisplayName', 'Toe-Strike')
-    xlim([50 300])
-    legend()
+    xline(t_TO, '--r', 'Toe-Off')
+    xline(t_TS, '--b', 'Toe-Strike')
+    xlim([150 400])
     hold off
         
 %% Exercice 3.A.3 (estimate the foot-flat duration)
