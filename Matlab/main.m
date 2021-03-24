@@ -333,8 +333,8 @@ function main()
     end
         
     left_gait_times = [];
-    for i = 2:1:size(right_midswing,2)
-       left_gait_times = [left_gait_times, (1/freq)*(right_midswing(i)-right_midswing(i-1))];
+    for i = 2:1:size(left_midswing,2)
+       left_gait_times = [left_gait_times, (1/freq)*(left_midswing(i)-left_midswing(i-1))];
     end
     
     left_cadence = 60 ./ left_gait_times;
