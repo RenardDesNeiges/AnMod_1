@@ -325,6 +325,7 @@ function main()
 %% Exercice 1.A.5 (Compute Gait Cycle, Cadence, Stance Percentage)
     % compute the stance phase percentage, gait cycle time and cadence for
     % left and right leg.
+    freq = data.imu.left.fs;
     
     right_gait_times = [];
     for i = 2:1:size(right_midswing,2)
@@ -336,19 +337,25 @@ function main()
        left_gait_times = [left_gait_times, (1/freq)*(right_midswing(i)-right_midswing(i-1))];
     end
     
+    left_cadence = 60 ./ left_gait_times;
+    right_cadence = 60 ./ right_gait_times;
+    
+    left_stance = (left_TC_events - left_IC_events) * (1/ freq);
+    right_stance = (right_TC_events - right_IC_events) * (1/ freq);
+    
 
     scriptOutResults.imu.leftMeanGaitCycleTime = [mean(left_gait_times)]; % insert the mean gait cycle time of the left foot
     scriptOutResults.imu.leftSTDGaitCycleTime = [std(left_gait_times)]; % insert the gait cycle time STD of the left foot
     scriptOutResults.imu.rightMeanGaitCycleTime = [mean(right_gait_times)]; % insert the mean gait cycle time of the right foot
     scriptOutResults.imu.rightSTDGaitCycleTime = [std(right_gait_times)]; % insert the gait cycle time STD of the right foot
-    scriptOutResults.imu.leftMeanCadence = []; % insert the mean cadence of the left foot
-    scriptOutResults.imu.leftSTDCadence = []; % insert the cadence STD of the left foot
-    scriptOutResults.imu.rightMeanCadence = []; % insert the mean cadence of the left foot
-    scriptOutResults.imu.rightSTDCadence = []; % insert the cadence STD of the left foot
-    scriptOutResults.imu.leftMeanStance = []; % insert the mean stance phase duration of left foot
-    scriptOutResults.imu.leftSTDStance = []; % insert the stance phase duration STD of left foot
-    scriptOutResults.imu.rightMeanStance = []; % insert the mean stance phase duration of right foot
-    scriptOutResults.imu.rightSTDStance = []; % insert the stance phase duration STD of right foot
+    scriptOutResults.imu.leftMeanCadence = [mean(left_cadence)]; % insert the mean cadence of the left foot
+    scriptOutResults.imu.leftSTDCadence = [std(left_cadence)]; % insert the cadence STD of the left foot
+    scriptOutResults.imu.rightMeanCadence = [mean(right_cadence)]; % insert the mean cadence of the left foot
+    scriptOutResults.imu.rightSTDCadence = [std(right_cadence)]; % insert the cadence STD of the left foot
+    scriptOutResults.imu.leftMeanStance = [mean(left_stance())]; % insert the mean stance phase duration of left foot
+    scriptOutResults.imu.leftSTDStance = [std(left_stance)]; % insert the stance phase duration STD of left foot
+    scriptOutResults.imu.rightMeanStance = [mean(right_stance)]; % insert the mean stance phase duration of right foot
+    scriptOutResults.imu.rightSTDStance = [std(right_stance)]; % insert the stance phase duration STD of right foot
 
 %% Exercice 1.A.6 (Compare the mean right/left cadence)
     % Compare the mean cadence of the right leg to the right leg 
@@ -360,7 +367,7 @@ function main()
     % <<< ENTER YOUR CODE HERE >>>
 
     
-    scriptOutResults.imu.cvGCT = []; % insert CV GCT right foot
+    scriptOutResults.imu.cvGCT = scriptOutResults.imu.rightSTDGaitCycleTime / scriptOutResults.imu.rightMeanGaitCycleTime; % insert CV GCT right foot
 
 %% Exercice 1.A.8 (Propose another method to extract Cadence)
     % <<< No CODE >>>
@@ -824,6 +831,12 @@ function main()
     
     x_rear = 1:1:size(mean_F_rear_right,1);
     x_fore = 1:1:size(mean_F_fore_right,1);
+   
+    t_HO = [find(mean_F_rear_right(100:140) == min(mean_F_rear_right(100:140)))+100, find(mean_F_rear_right(200:240) == min(mean_F_rear_right(200:240)))+200];
+    t_HS = [find(mean_F_rear_right(50:150) == min(mean_F_rear_right(50:150)))+50, find(mean_F_rear_right(150:250) == min(mean_F_rear_right(150:250)))+150];
+    
+    t_TS = [find(mean_F_fore_right(50:100) == min(mean_F_fore_right(50:150)))+50, find(mean_F_fore_right(170:210) == min(mean_F_fore_right(170:210)))+170];
+    t_TO = [find(mean_F_fore_right(100:200) == min(mean_F_fore_right(100:200)))+100, find(mean_F_fore_right(250:300) == min(mean_F_fore_right(250:300)))+250];
     
     subplot(2,1,1)
     plot(mean_F_rear_right(1:400), 'black')
@@ -831,8 +844,9 @@ function main()
     title('Rear Force right')
     hold on
     plot(x_rear(scriptOutResults.insole.rightHS), mean_F_rear_right(scriptOutResults.insole.rightHS), '-b', 'DisplayName', 'Heel-Strike')
-    plot(x_rear(scriptOutResults.insole.rightHO), mean_F_rear_right(scriptOutResults.insole.rightHO), '-r', 'DisplayName', 'Heel-Off')
-    xlim([1 400])
+    xline(t_HO, '--r', 'DisplayName', 'Heel-Off')
+    xline(t_HS, '--b', 'DisplayName', 'Heel-Strike')
+    xlim([50 300])
     legend()
     hold off
     
@@ -842,29 +856,27 @@ function main()
     title('Fore Force right')
     hold on
     plot(x_fore(scriptOutResults.insole.rightTS), mean_F_fore_right(scriptOutResults.insole.rightTS), '-b', 'DisplayName', 'Toe-Strike')
-    plot(x_fore(scriptOutResults.insole.rightTO), mean_F_fore_right(scriptOutResults.insole.rightTO), '-r', 'DisplayName', 'Toe-Off')
-    xlim([1 400])
+    xline(t_TO, '--r', 'DisplayName', 'Toe-Off')
+    xline(t_TS, '--b', 'DisplayName', 'Toe-Strike')
+    xlim([50 300])
     legend()
     hold off
         
 %% Exercice 3.A.3 (estimate the foot-flat duration)
     % for the two cycles above, estimate the foot-flat duration
     % <<< ENTER YOUR CODE HERE >>>
+    
+    % Foot flat duration = t(HO) - t(TS)
+    ff_d1 = t_HO(1) - t_TS(1);
+    ff_d2 = t_HO(2) - t_TS(2);
         
 %% Exercice 3.B.1 (Mean vertical force during flat foot)
     % estimate the total vertical force signal recorded by the insole 
     % during one foot-flat period.
     % <<< ENTER YOUR CODE HERE >>>
     
-    id_HO = scriptOutResults.insole.rightHO(1);
-    id_TS = scriptOutResults.insole.rightTS(1);
-    
-    force_cycle = data.insole.right.pressure(id_HO:id_TS,:).*data.insole.right.area(id_HO:id_TS,:);
-    
-    freq = data.insole.right.fs;
-    filtered_force_cycle = applyLowpassFilter(force_cycle,5,freq);
-    
-    total_force = sum(filtered_force_cycle, 2)
+    force = sum(data.insole.right.pressure.*data.insole.right.area, 2);
+    mean_force_FF = mean(force(t_TS(1):t_HO(1)));
 
 %% Exercice 3.B.2 (free body diagram)
     % <<< No CODE  >>>
@@ -874,7 +886,7 @@ function main()
     % compute the net force at the ankle (F_A) and the net moment at the
     % ankle (M_A) for every timesample during one footflat period
     % <<< ENTER YOUR CODE HERE >>>
-    
+    F_A = force(t_TS(1):t_HO(1)) * 1e-3; % conversion into N * m
 
     % compute the mean value of F_A and M_A
     % <<< ENTER YOUR CODE HERE >>>
