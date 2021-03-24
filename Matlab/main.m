@@ -337,8 +337,8 @@ function main()
        left_gait_times = [left_gait_times, (1/freq)*(left_midswing(i)-left_midswing(i-1))];
     end
     
-    left_cadence = 60 ./ left_gait_times;
-    right_cadence = 60 ./ right_gait_times;
+    left_cadence = 120 ./ left_gait_times;
+    right_cadence = 120 ./ right_gait_times;
     
     left_stance = (left_TC_events - left_IC_events) * (1/ freq);
     right_stance = (right_TC_events - right_IC_events) * (1/ freq);
