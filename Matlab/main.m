@@ -872,7 +872,7 @@ function main()
        
     % detect the sample index of the multiple IC, TS, HO, TO
     % <<< ENTER YOUR CODE HERE >>>
-    weight = 70.0;
+    weight = mean(sum(data.insole.right.pressure.*data.insole.right.area, 2)); % approximation of GRF (~weight)
     threshold = 0.05 * weight;
     
     % Heel detection:
@@ -922,8 +922,8 @@ function main()
     x_fore = 1:1:size(mean_F_fore_right,1);
     
     subplot(2,1,1)
-    plot(mean_F_rear_right, 'black')
-    ylabel('Force [kPa * mm^2)]')
+    plot(mean_F_rear_right * 1e-3, 'black')
+    ylabel('Force [N)]')
     title('Rear Force right')
     hold on
     xline(t_HO, '--r', 'Heel-Off')
@@ -932,8 +932,8 @@ function main()
     hold off
     
     subplot(2,1,2)
-    plot(mean_F_fore_right, 'black')
-    ylabel('Force [kPa * mm^2]')
+    plot(mean_F_fore_right * 1e-3, 'black')
+    ylabel('Force [N]')
     title('Fore Force right')
     hold on
     xline(t_TO, '--r', 'Toe-Off')
@@ -946,32 +946,44 @@ function main()
     % <<< ENTER YOUR CODE HERE >>>
     
     % Foot flat duration = t(HO) - t(TS)
-    ff_d1 = t_HO(1) - t_TS(1);
-    ff_d2 = t_HO(2) - t_TS(2);
+    freq = data.insole.fs;
+    ff_d1 = (1/freq) * (t_HO(1) - t_TS(1));
+    ff_d2 = (1/freq) * (t_HO(2) - t_TS(2));
         
 %% Exercice 3.B.1 (Mean vertical force during flat foot)
     % estimate the total vertical force signal recorded by the insole 
     % during one foot-flat period.
     % <<< ENTER YOUR CODE HERE >>>
     
-    force = sum(data.insole.right.pressure.*data.insole.right.area, 2);
-    mean_force_FF = mean(force(t_TS(1):t_HO(1)));
+    force_right = sum(data.insole.right.pressure.*data.insole.right.area, 2) * 1e-3;
+    mean_force_FF_right = mean(force_right(t_TS(1):t_HO(1))); % GRF_FF(1) (N)
 
 %% Exercice 3.B.2 (free body diagram)
     % <<< No CODE  >>>
-    FF_time = mean(data.insole.time(scriptOutResults.insole.rightHO) - data.insole.time(scriptOutResults.insole.rightTS));
 
 %% Exercice 3.B.3 (mean value of ankle net force and moment during foot flat )
     % compute the net force at the ankle (F_A) and the net moment at the
     % ankle (M_A) for every timesample during one footflat period
     % <<< ENTER YOUR CODE HERE >>>
-    F_A = force(t_TS(1):t_HO(1)) * 1e-3; % conversion into N * m
+    
+    m_foot = 1; % foot mass (kg)
+    g = 9.81; % gravity constant (N/kg)
+    W = m_foot * g; % wight (N)
+    
+    % GRF on right foot:
+    F_right = [];
+    for i=1:length(t_HO)
+        F_right = [F_right mean(force_right(t_TS(i):t_HO(i)))]; % conversion into Newton (N)
+    end
+    
+    % M_A = F_A * 0.12 ;
+    M_A = 0.9 * F_right * 0.12 - 0.10 * W + 0.1 * F_right * 0.10;
 
     % compute the mean value of F_A and M_A
     % <<< ENTER YOUR CODE HERE >>>
     
-     scriptOutResults.insole.MeanF_A = [];
-     scriptOutResults.insole.MeanM_A = [];
+     scriptOutResults.insole.MeanF_A = mean(F - W);
+     scriptOutResults.insole.MeanM_A = mean(M_A);
 
 %% Exercice 3.B.4 (IMU vs. Insole for event detection)
     % compare the IMU with Insole for event detection
@@ -981,6 +993,27 @@ function main()
     % compute the net force apply to the foot during the whole stance phase
     % Plot the GRF for one gait cycle
     % <<< ENTER YOUR CODE HERE >>>
+    
+    % GRF on left foot:
+    force_left = sum(data.insole.left.pressure.*data.insole.left.area, 2) * 1e-3;
+
+    force_right = applyLowpassFilter(force_right,5,freq);
+    force_left = applyLowpassFilter(force_left,5,freq);
+    
+    figure()
+    plot(force_right, 'LineWidth', 2, 'DisplayName', 'Right Foot')
+    hold on
+    plot(force_left, 'LineWidth', 2, 'DisplayName', 'Left Foot')
+    xlim([1,200])
+    
+    ylabel('Force [N]')
+    xlabel('time')
+    title('Ground Reaction Force of left and right foot during foot flat phase')
+    legend()
+    
+    set(gcf,'color','w')
+    
+    hold off
     
 %% Save the output   
     %======================================================================
