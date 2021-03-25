@@ -399,31 +399,19 @@ function main()
     freq = 1/data.imu.left.time(2);
     
     %%
-    
+    subplot(1,1,1)
     flt_d = applyLowpassFilter(right_foot_gyro(:,3),5,freq);
-    intgr = cumtrapz(flt_d);
-    plot(intgr)
+    intgr_uncorrected = cumtrapz(flt_d);
+    intgr_uncorrected = intgr_uncorrected - intgr_uncorrected(right_mid_FF(1)+right_midswing(1));
+    plot(intgr_uncorrected)
     
      
     
 %% Exercice 1.B.2 (Remove the Drift)
-    %Brouillon code, faudrait faire pareil mais moins moche
 
-    fit = polyfit(1:1:size(intgr),intgr,1);
-    mean_est = polyval(fit,1:1:size(intgr));
-    
-    subplot(2,1,1)
-    plot(intgr)
-    hold on 
-    plot(mean_est)
-    hold off
     
     
-    averaged = intgr-mean_est';
-    subplot(2,1,2)
-    plot(averaged)
     
-    %%
     corrected_right_angle = [];
     %right foot
     for i = 2:1:size(right_mid_FF,2)
@@ -446,13 +434,31 @@ function main()
        corrected_right_angle = [corrected_right_angle,corrected'];
     end
     %%
-    subplot(1,1,1)
     
-    plot(corrected_right_angle(500:6000))
-    xlim([0,5500])
+    time = 5500;
+    subplot(1,1,1)
+    hold off
+    plot(corrected_right_angle(1:time))
+    hold on
+    plot(intgr_uncorrected(right_mid_FF(1)+right_midswing(1):right_mid_FF(1)+right_midswing(1)+time))
+    xlim([1,time])
+    title('corrected integrated foot angle using foot flat detection')
+    xlabel('time samples (sampled at 500Hz)')
+    ylabel('integrated pitch angle in degrees')
+    legend({'Corrected integrated value','Uncorrected integration'})
+    
+    set(gcf,'color','w');
+    
+    hold off
+    %%
+    
     title('corrected integrated foot angle using foot flat detection')
     xlabel('time samples (sampled at 500Hz)')
     ylabel('angle (in degrees)')
+    hold on 
+    plot(intgr_uncorrected(right_mid_FF(1)+right_midswing(1):600))
+    hold off
+    
     %%
     subplot(1,1,1)
     plot(corrected_right_angle())
@@ -465,17 +471,12 @@ function main()
     end
     
     close all
-    
+    %%
     subplot(2,1,1)
     plot(drift_sale)
     
     subplot(2,1,2)
     plot(averaged)
-    
-    %% Drift Unser Edition
-    
-    nik_les_drifts = movmean(right_foot_gyro(:,3),300);
-    plot(nik_les_drifts)
     
     % correct the drift on the pitch angle signal
     % <<< ENTER YOUR CODE HERE >>>
@@ -546,28 +547,32 @@ function main()
     
     freq = data.motioncameras.static.fs;
    
-    Z = applyLowpassFilter(data.motioncameras.walking.leftCenterFoot(:,1), 10, freq);
+    Z = applyLowpassFilter(data.motioncameras.walking.leftCenterFoot(:,3), 10, freq);
     Y = applyLowpassFilter(data.motioncameras.walking.leftCenterFoot(:,2), 10, freq);
-    X = applyLowpassFilter(data.motioncameras.walking.leftCenterFoot(:,3), 10, freq);
+    X = applyLowpassFilter(data.motioncameras.walking.leftCenterFoot(:,1), 10, freq);
     
-    subplot(3,1,1)
-    plot(Z, 'LineWidth',1);
-    title('Z axis') % acceleration is approximately constant, amplitude 0.2
-    xlim([0,3000])
-    
-    subplot(3,1,2)
+    subplot(1,1,1)
+    hold off
+    hold on
     plot(X, 'LineWidth',1);
-    title('X axis') % cycles, with amplitude 0.5
+    
     xlim([0,3000])
     
-    subplot(3,1,3)
+    
     plot(Y, 'LineWidth',1);
-    title('Y axis') % varies in a similar manner as above, amplitude 0.4
+    
     xlim([0,3000])
     
+    plot(Z, 'LineWidth',1);
+    xlabel('time samples (sampled at 100Hz)')
+    ylabel('position (in mm)')
+    legend({'X','Y','Z'})
+    xlim([0,3000])
     set(gcf,'color','w');
+    title('Position of left center foot marker in time')
     
-    sgtitle('Components of the leftCenterFoot marker over time')
+    
+    hold off
         
 %% Exercice 2.B.2 (Construct the technical frame of the left foot)
     % construct the technical frame of the left foot
@@ -638,6 +643,8 @@ function main()
     % If orthogonal, <TF_i, TF_j> = 0 for i ? j
     if ((dot(afX,afY)+dot(afX,afZ)+dot(afY,afZ)) ~= 0)
        disp("not orthogonal") 
+    else
+        disp("orthogonal")
     end
 
 %% Exercice 2.B.6 (Compute the rotation matrix between AF and GF)
@@ -690,6 +697,45 @@ function main()
     subplot(3,1,3)
     plot(Ztf_data)
     xlim([1,2500])
+    
+%%
+
+% print coordination systems (for debug purposes)
+    
+    O = [0;0;0];
+    
+    % GF
+    O_X0 = [O, [1,0,0]']; O_Y0 = [O, [0,1,0]']; O_Z0 = [O, [0,0,1]'];
+    plot3(O_X0(1,:),O_X0(2,:),O_X0(3,:),'k', ...
+          O_Y0(1,:),O_Y0(2,:),O_Y0(3,:),'k', ...
+          O_Z0(1,:),O_Z0(2,:),O_Z0(3,:),'k');
+    hold on
+    
+    
+    
+    % AF
+    O_X_AF = [O, afX']; O_Y_AF = [O, afY']; O_Z_AF = [O, afZ'];
+    plot3(O_X_AF(1,:),O_X_AF(2,:),O_X_AF(3,:),'r', ...
+          O_Y_AF(1,:),O_Y_AF(2,:),O_Y_AF(3,:),'r', ...
+          O_Z_AF(1,:),O_Z_AF(2,:),O_Z_AF(3,:),'r');
+    
+    % TF
+    O_X_TF = [O, Xtf']; O_Y_TF = [O, Ytf']; O_Z_TF = [O, Ztf'];
+    plot3(O_X_TF(1,:),O_X_TF(2,:),O_X_TF(3,:),'b', ...
+          O_Y_TF(1,:),O_Y_TF(2,:),O_Y_TF(3,:),'b', ...
+          O_Z_TF(1,:),O_Z_TF(2,:),O_Z_TF(3,:),'b');
+    
+    title('Bases')
+    legend('X0','Y0','Z0','X AF','Y AF','Z AF','X TF','Y TF','Z TF')
+    xlabel('X0');
+    ylabel('Y0');
+    zlabel('Z0');
+    daspect([1 1 1]);
+    xlim([-1 1])
+    ylim([-1 1])
+    zlim([-1 1])
+    grid on
+    hold off
     
    
 %% Exercice 2.C.2 (compute AF for walking)
@@ -769,30 +815,43 @@ function main()
     alpha = zeros(size(Yaf_data,1),1);
     
     for i = 1:1:size(Yaf_data,1)
-        
+        thr = 0.1
+        corr = 0.21;
         alpha(i) =  asin(norm(cross(Yaf_data(i,:),n),2) / ...
-            (norm(Yaf_data(i,:),2) * norm(n,2)));
+            (-sign(Yaf_data(i,1)+thr)*norm(Yaf_data(i,:),2) * norm(n,2))) ...
+            + sign(Yaf_data(i,1)+thr)* corr;
     end
     
     %alpha = asin(abs(y * n)/abs(y)*abs(n));
+    subplot(1,1,1)
+    plot(alpha)
+    hold on
+    plot(sign(Yaf_data(:,1)))
+    hold off
+    xlim([199,420])
+    
+    
+    
  
 %% Exercice 2.C.4 (Plot pitch angle and show swing, stance phase, flat foot periods)    
     % (3) compute the pitch angle
     % <<< ENTER YOUR CODE HERE >>>
-    alpha_filtered = applyLowpassFilter(alpha, 5, freq); % définir mieux le threshold
+   
     
-    subplot(2,1,1)
-    plot(alpha_filtered)
-    start = 100 ;
-    xlim([start,start+100])
-    subplot(2,1,2)
-    plot(intgr)
-    xlim([100,600])
-    
-    %plot(t, alpha_filtered, '-b')
-    %xlabel('time [s]')
-    %ylabel('Pitch Angle [rad]')
-    %legend()
+    subplot(1,1,1)
+    plot(alpha)
+    start = 90 ;
+    xlim([start,start+222])
+    xline(136,'r')
+    xline(180,'b')
+    xline(112,'m')
+    xline(248,'r')
+    xline(293,'b')
+    xline(223,'m')
+    title('Pitch Angle from Motion Capture Data (2 strides)')
+    set(gcf,'color','w');
+    ylabel('Pitch Angle [rad]')
+    xlabel('Time Samples (Sampled at 100Hz)')
           
 %%  ------------- (3) ASSIGNEMENT 3: KINETIC ANALYSIS -----------------   
 
