@@ -892,9 +892,6 @@ function main()
     % to add labels on each axis and a legend for all signals. 
     % <<< ENTER YOUR CODE HERE >>>
     
-    x_rear = 1:1:size(mean_F_rear_right,1);
-    x_fore = 1:1:size(mean_F_fore_right,1);
-    
     subplot(2,1,1)
     plot(mean_F_rear_right * 1e-3, 'black')
     ylabel('Force [N)]')
@@ -951,7 +948,7 @@ function main()
     end
     
     % M_A = F_A * 0.12 ;
-    M_A = 0.9 * F_right * 0.12 - 0.10 * W + 0.1 * F_right * 0.10;
+    M_A = -(0.9 * F_right) * 0.12 + W * 0.10 - (0.1 * F_right) * 0.10;
 
     % compute the mean value of F_A and M_A
     % <<< ENTER YOUR CODE HERE >>>
