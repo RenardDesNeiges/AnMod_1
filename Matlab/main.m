@@ -38,6 +38,7 @@ function main()
     ylabel('angular velocity in deg/s') 
     xlabel('time samples (sampled at 500Hz)') 
     legend({'transverse plane (yaw)', 'frontal plane (roll)', 'saggital plane (pitch)'},'Location','southwest')
+    xlim([0 2000])
 
     subplot(2,1,2); 
     plot(right_foot_gyro)
@@ -45,6 +46,7 @@ function main()
     ylabel('angular velocity in deg/s') 
     xlabel('time samples (sampled at 500Hz)') 
     legend({'transverse plane (yaw)', 'frontal plane (roll)', 'saggital plane (pitch)'},'Location','southwest')
+    xlim([0 2000])
     
     %white background for nicer reports
     set(gcf,'color','w');
